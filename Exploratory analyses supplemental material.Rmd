@@ -1,0 +1,863 @@
+---
+title: "Resident cooperation MS Kupan Supplemental material"
+author: "Krisztina Kupan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Packages
+
+
+```{r packages}
+
+library(lme4)
+library(lmtest)
+library(MASS)
+library(glmmTMB)
+library(performance)
+library(rstanarm)
+library(brms)  # for models
+library(bayesplot)
+library(ggplot2)
+library(dplyr)
+library(tidybayes)
+library(modelr)
+library(pscl)
+library(GLMMadaptive)
+library(fitdistrplus)
+library(AER)
+library(tidyr)
+library(car)
+library(AICcmodavg)
+library(VGAM) # tobit function
+library(DHARMa)
+library(readxl)
+library(stringr)
+library(sjPlot) # ploy_model
+library(scales)
+library(emmeans)
+library(patchwork)
+library(data.table)
+library(DHARMa)
+library(sjPlot)
+
+```
+
+
+### Preparing data files
+
+```{r Data sets}
+
+# Only Resident behaviour data set
+Session_behav_all_res <- read.csv("Resident cooperation MS Kupan Data/Session_behav_no_state_aggression.csv")
+
+# Resident + Satellite data set (both resident and Satellite copulations and received visits)
+Session_behav_df_res_sat <- read.csv("Resident cooperation MS Kupan Data/session_behav_df_full.csv")
+
+```
+
+
+### IV. Exploratory analyses I: Within-Resident differences between Satellite and Control conditions - Method 2
+
+## Exploratory data set: Day ID added (Day1, 2, 3) within a the 3 consecutive days of a Resident group with the Satellite and without the Satellite to test if response variables are influenced by the day within a combination (Supplemental material 1.10)
+
+
+```{r Data preparation Method 2 - Combo_behav_no_state data set}
+
+Session_behav_no_state <- read.csv("Resident cooperation MS Kupan Data/Session_behav_no_state_aggression.csv")
+
+Combo_behav_no_state <- NULL
+
+Combo_behav_no_state <- Session_behav_no_state
+
+# Creating week IDs for sessions in the last week
+
+Combo_behav_no_state$Week <- ifelse(Combo_behav_no_state$Date == 530 | Combo_behav_no_state$Date == 602 | Combo_behav_no_state$Date == 531 & Combo_behav_no_state$Time == "m"| Combo_behav_no_state$Date == 603 & Combo_behav_no_state$Time == "m", 7, Combo_behav_no_state$Week)
+
+Combo_behav_no_state$Week <- ifelse(Combo_behav_no_state$Week == "7a"|Combo_behav_no_state$Week == "7m", 8, Combo_behav_no_state$Week)
+
+Combo_behav_no_state$Combo_lek_week <- paste(Combo_behav_no_state$Combo_lek, Combo_behav_no_state$Week, sep = "_")
+
+# Creating Day ID within male groups for both conditions (Combo_day)
+
+Combo_behav_no_state <- Combo_behav_no_state %>% group_by(Combo_lek_week, Condition) %>% mutate(Combo_day = match(paste(Date2,Time), unique(paste(Date2, Time)))) %>% arrange(Session_ID) %>% relocate(Combo_day, .after = Combo_lek)
+
+```
+
+
+## IV/1. Display behaviour
+
+
+```{r Display activity score}
+
+## Model 1: Only intercept models
+
+
+# Zero inflation neg bin model
+combo_displ_nr_zi_nb_mm <- glmmTMB(Total_nr_display ~  Condition  + Combo_day +  Date2 + (1|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = nbinom2, zi = ~  1)
+summary(combo_displ_nr_zi_nb_mm)
+performance::check_zeroinflation(combo_displ_nr_zi_nb_mm)
+check_overdispersion(combo_displ_nr_zi_nb_mm)
+check_singularity(combo_displ_nr_zi_nb_mm)
+confint(combo_displ_nr_zi_nb_mm, level = 0.95, method = "profile")
+# Convergence problem - no Day ID effect
+
+
+## Model 2: intercept/slope models (with condition as slope):these are not converging well and are zero inflated or over dispersed so they were not used
+
+combo_displ_nr_poi_sl_mm <- glmmTMB(Total_nr_display ~  Condition  + Combo_day +  Date2 + (Condition|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = poisson(link = log), zi = ~ 1)
+summary(combo_displ_nr_poi_sl_mm)
+performance::check_zeroinflation(combo_displ_nr_poi_sl_mm)
+check_overdispersion(combo_displ_nr_poi_sl_mm)
+check_singularity(combo_displ_nr_poi_sl_mm)
+# Convergence problem - no Day ID effect
+
+
+```
+
+
+## IV/2. Aggressive behaviour
+
+
+## IV/2a. Number of chases against Residents
+
+
+```{r Number of chases against Residents}
+
+
+## Model 1: Only intercept models
+
+# Zi neg bin
+combo_aggression_res_chasing_nb_zi_mm <- glmmTMB(Chasings_res ~  Condition  + Combo_day +  Date2 + Total_nr_display + (1|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = nbinom2, zi = ~ 1 + Total_nr_display)
+summary(combo_aggression_res_chasing_nb_zi_mm)
+performance::check_zeroinflation(combo_aggression_res_chasing_nb_zi_mm)
+check_overdispersion(combo_aggression_res_chasing_nb_zi_mm)
+check_singularity(combo_aggression_res_chasing_nb_zi_mm)
+confint(combo_aggression_res_chasing_nb_zi_mm, level = 0.95)
+# Ok, Final model - No Day ID effect
+
+
+## Model 2: intercept/slope models (with condition as slope) - with condition slop they don't converge or the slope does not improve the model - these are not used
+
+# Zi neg bin
+combo_aggression_res_chasing_sl__nb_zi_mm <- glmmTMB(Chasings_res ~  Condition  + Combo_day +  Date2 + Total_nr_display + (Condition|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = nbinom2, zi = ~ 1 + Total_nr_display)
+summary(combo_aggression_res_chasing_sl__nb_zi_mm)
+performance::check_zeroinflation(combo_aggression_res_chasing_sl__nb_zi_mm)
+check_overdispersion(combo_aggression_res_chasing_sl__nb_zi_mm)
+check_singularity(combo_aggression_res_chasing_sl__nb_zi_mm)
+# Ok, Final model - No Day ID effect
+
+```
+
+
+## IV/2b. Number of attacks against Residents
+
+
+```{r Number of attacks against Residents}
+
+## Model 1: Only intercept models
+
+# Neg bin
+combo_aggression_res_attack_nb_mm <- glmmTMB(Aggression_res_attack_approach ~  Condition  + Combo_day +  Date2 + Total_nr_display  + (1|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = nbinom2)
+summary(combo_aggression_res_attack_nb_mm)
+performance::check_zeroinflation(combo_aggression_res_attack_nb_mm)
+check_overdispersion(combo_aggression_res_attack_nb_mm)
+check_singularity(combo_aggression_res_attack_nb_mm)
+confint(combo_aggression_res_attack_nb_mm, level = 0.95, method = "profile")
+# Ok - final model - No Day ID effect
+
+
+## Model 2: intercept/slope models (with condition as slope)
+
+# Neg bin
+combo_aggression_res_attack_sl_nb_mm <- glmmTMB(Aggression_res_attack_approach ~  Condition  + Combo_day +  Date2 + Total_nr_display  + (Condition|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = nbinom2)
+summary(combo_aggression_res_attack_sl_nb_mm)
+performance::check_zeroinflation(combo_aggression_res_attack_sl_nb_mm)
+check_overdispersion(combo_aggression_res_attack_sl_nb_mm)
+check_singularity(combo_aggression_res_attack_sl_nb_mm)
+confint(combo_aggression_res_attack_sl_nb_mm, level = 0.95, method = "profile")
+# Ok - best model fit - No Day ID effect
+
+```
+
+
+## IV/2c. Duration of fights
+
+
+```{r Duration of fights}
+
+Combo_behav_no_state$Fight_dur_s_tr <- ifelse(Combo_behav_no_state$Fight_dur_s == 0, 0, sqrt(Combo_behav_no_state$Fight_dur_s))
+
+## Model 1: Only intercept models - Random variable has no effect
+
+# Gamma hurdle
+combo_figth_dur_mm_gamma <- glmmTMB(Fight_dur_s_tr ~  Condition  + Combo_day +  Date2 + Total_nr_display + (1|Combo_lek_week:Colour_code) , data = Combo_behav_no_state, family = ziGamma(link="log"), ziformula = ~ 1 + Total_nr_display)
+summary(combo_figth_dur_mm_gamma)
+check_overdispersion(combo_figth_dur_mm_gamma)
+confint(combo_figth_dur_mm_gamma, level = 0.95, method = "profile")
+# Ok - final model - Day ID has an effect 
+
+
+## Model 2: intercept/slope models (with condition as slope)
+
+combo_figth_dur_sl_mm_lnorm <- glmmTMB(Fight_dur_s_tr ~  Condition  + Combo_day +  Date2 + Total_nr_display + (Condition|Combo_lek_week:Colour_code) , data = Combo_behav_no_state,family = glmmTMB::lognormal(link="log"),  ziformula = ~ Total_nr_display)
+summary(combo_figth_dur_sl_mm_lnorm)
+check_overdispersion(combo_figth_dur_sl_mm_lnorm)
+# Ok - final model - No Day ID effect 
+
+
+```
+
+
+## IV/2d. Number of chases against non-Residents
+
+
+```{r Number of chases against non-Residents}
+
+
+# Creating a uniform variable for the non-Residents
+Combo_behav_no_state$Chasings_marg_sat <-  rowSums(Combo_behav_no_state[,c("Chasings_marg", "Chasings_sat")], na.rm=TRUE)
+ 
+## Model 1: Only intercept models - Random variable has no effect
+
+# zi neg bin
+combo_aggression_total_nb_zi_mm <- glmmTMB(Chasings_marg_sat ~ Condition  + Combo_day +  Date2 + Total_nr_display  + (1|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = nbinom2, zi = ~ 1 + Total_nr_display)
+summary(combo_aggression_total_nb_zi_mm)
+performance::check_zeroinflation(combo_aggression_total_nb_zi_mm)
+check_overdispersion(combo_aggression_total_nb_zi_mm)
+check_singularity(combo_aggression_total_nb_zi_mm)
+confint(combo_aggression_total_nb_zi_mm, level = 0.95, method = "profile")
+# Ok - final model - Day ID has an effect 
+
+
+## Model 2: intercept/slope models (with condition as slope) - slope has very little effect
+
+# Zi poisson
+combo_chasings_total_sl_poi_zi_mm <- glmmTMB(Chasings_marg_sat ~  Condition  + Combo_day +  Date2 + Total_nr_display  + (Condition|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = poisson(link = log), zi = ~ 1 + Total_nr_display)
+summary(combo_chasings_total_sl_poi_zi_mm)
+performance::check_zeroinflation(combo_chasings_total_sl_poi_zi_mm)
+check_overdispersion(combo_chasings_total_sl_poi_zi_mm)
+check_singularity(combo_chasings_total_sl_poi_zi_mm)
+confint(combo_chasings_total_sl_poi_zi_mm, level = 0.95)
+# Ok - final model - Day ID has an effect
+
+
+```
+
+
+## IV/2e. Number of attacks against non-Residents
+
+
+```{r Number of attacks against non-Residents }
+
+
+# Creating a uniform variable for the non-Residents
+Combo_behav_no_state$Attacks_marg_sat <- rowSums(Combo_behav_no_state[,c("Attacks_marg", "Attacks_sat")], na.rm=TRUE)
+  
+## Model 1: Only intercept models
+
+# Poisson
+combo_aggression_total_poi_mm <- glmmTMB(Attacks_marg_sat ~  Condition  + Combo_day +  Date2 + Total_nr_display  + (1|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = poisson(link = "log"))
+summary(combo_aggression_total_poi_mm)
+performance::check_zeroinflation(combo_aggression_total_poi_mm)
+check_overdispersion(combo_aggression_total_poi_mm)
+check_singularity(combo_aggression_total_poi_mm)
+confint(combo_aggression_total_poi_mm, level = 0.95, method = "profile")
+# Ok - final model
+
+## Model 2: intercept/slope models (with condition as slope) - slope has very little effect
+
+# Poisson
+combo_aggression_total_sl_poi_mm <- glmmTMB(Attacks_marg_sat ~  Condition  + Combo_day +  Date2 + Total_nr_display  + (Condition|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = poisson(link = "log"))
+summary(combo_aggression_total_sl_poi_mm)
+performance::check_zeroinflation(combo_aggression_total_sl_poi_mm)
+check_overdispersion(combo_aggression_total_sl_poi_mm)
+check_singularity(combo_aggression_total_sl_poi_mm)
+# Ok - final model - No Day ID effect
+
+```
+
+
+## IV/3. Female mate choice 
+
+
+# Probability of female visits (a), copulation attempts (b) and successful copulations (c) for a Resident over a group period
+
+```{r Probability of female choice models}
+
+# Visits
+
+Combo_behav_no_state <- Combo_behav_no_state %>% mutate(Visit_occurrence_week = if_else(Visit_occurrence > 0, 1, 0)) %>% relocate(Visit_occurrence_week, .after = Visit_occurrence) %>% group_by(Combo_lek_week, Colour_code) %>% mutate(Co_displ_occurrence2 = sum(Co_displ_occurrence)) %>% relocate(Co_displ_occurrence2, .after = Co_displ_occurrence) %>% mutate(Co_displ_occurrence2 = if_else(Co_displ_occurrence2 >0, 1, 0))
+
+Combo_vis_occ_log_reg <- glmer(Visit_occurrence_week ~ Condition + Total_nr_display  + Combo_day +  Date2 + (1|Combo_lek_week:Colour_code), family = "binomial", data = Combo_behav_no_state)
+summary(Combo_vis_occ_log_reg)
+# Ok - final model - No Day ID effect
+
+
+# Copulation attempts
+
+Combo_behav_no_state <- Combo_behav_no_state %>% mutate(Copulation_occurrence_week = if_else(Copulation_occurrence > 0, 1, 0)) %>% relocate(Copulation_occurrence_week, .after = Copulation_occurrence) %>% group_by(Combo_lek_week, Colour_code) %>% mutate(Co_displ_occurrence2 = sum(Co_displ_occurrence)) %>% relocate(Co_displ_occurrence2, .after = Co_displ_occurrence) %>% mutate(Co_displ_occurrence2 = if_else(Co_displ_occurrence2 >0, 1, 0))
+
+Comb_cop_occ_log_reg <- glmer(Copulation_occurrence_week ~ Condition  + Combo_day +  Date2 + Total_nr_display + (1|Combo_lek_week:Colour_code), family = "binomial", data = Combo_behav_no_state)
+summary(Comb_cop_occ_log_reg)
+confint(Comb_cop_occ_log_reg)
+# Ok - final model - No Day ID effect
+
+## Successful copulation occurrence per male per week
+
+Combo_behav_no_state <- Combo_behav_no_state %>% mutate(Copulation_occurrence_successful_week = if_else(Copulation_occurrence_successful > 0, 1, 0)) %>% relocate(Copulation_occurrence_successful_week, .after = Copulation_occurrence_successful) %>% group_by(Combo_lek_week, Colour_code) %>% mutate(Co_displ_occurrence2 = sum(Co_displ_occurrence)) %>% relocate(Co_displ_occurrence2, .after = Co_displ_occurrence) %>% mutate(Co_displ_occurrence2 = if_else(Co_displ_occurrence2 >0, 1, 0))
+
+Combos_suc_cop_occ_log_reg <- glm(Copulation_occurrence_successful_week ~ Condition  + Combo_day +  Date2 + Total_nr_display, family = "binomial", data = Combo_behav_no_state)
+summary(Combos_suc_cop_occ_log_reg)
+confint(Combos_suc_cop_occ_log_reg)
+# Ok - final model - No Day ID effect
+
+```
+
+
+# IV/3a. Total number of female visits
+
+```{r Total number of female visits}
+
+# Zero_inflated neg bin
+combo_visit_nr_zi_mm <- glmmTMB(Total_visit_nr_all_females ~  Total_nr_display + Condition  + Combo_day +  Date2 + (1|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = nbinom2, zi = ~  1 + Total_nr_display)
+summary(combo_visit_nr_zi_mm)
+performance::check_zeroinflation(combo_visit_nr_zi_mm)
+check_overdispersion(combo_visit_nr_zi_mm)
+check_singularity(combo_visit_nr_zi_mm)
+confint(combo_visit_nr_zi_mm, level = 0.95, method = "profile")
+# Ok - final model- No Day ID effect
+
+
+## Model 2: intercept/slope models (with condition as slope)
+
+# Zi Poisson
+combo_visit_nr_zi_sl_poi_mm <- glmmTMB(Total_visit_nr_all_females ~  Condition + Total_nr_display  + Combo_day +  Date2 + (Condition|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = poisson(link = log), zi = ~  1 )
+summary(combo_visit_nr_zi_sl_poi_mm)
+performance::check_zeroinflation(combo_visit_nr_zi_sl_poi_mm)
+check_overdispersion(combo_visit_nr_zi_sl_poi_mm)
+check_singularity(combo_visit_nr_zi_sl_poi_mm)
+confint(combo_visit_nr_zi_sl_poi_mm, level = 0.95)
+# Not converging
+
+
+```
+
+
+# IV/3b. Total duration of female visits
+
+
+```{r Total duration of female visits}
+
+## Model1 - intercept only
+
+Combo_behav_no_state$Total_visit_duration_all_females_tr <- ifelse(Combo_behav_no_state$Total_visit_duration_all_females == 0, 0, sqrt(Combo_behav_no_state$Total_visit_duration_all_females))
+
+# Lognorm hurdle model
+combo_visit_dur_lognorm_hurdle_mm <- glmmTMB(Total_visit_duration_all_females_tr ~ Condition + Total_nr_display  + Combo_day +  Date2 + (1|Combo_lek_week:Colour_code), data = Combo_behav_no_state, family = glmmTMB::lognormal(link="log"), ziformula = ~ 1 + Total_nr_display)
+summary(combo_visit_dur_lognorm_hurdle_mm)
+check_overdispersion(combo_visit_dur_lognorm_hurdle_mm)
+# Final model - No Day ID effect
+
+
+## Model 2: intercept/slope models (with condition as slope)
+
+# Transformed data does not converge
+combo_visit_dur_gamma_hurdle_sl_mm <- glmmTMB(Total_visit_duration_all_females ~ Condition  + Combo_day +  Date2 + (Condition|Combo_lek_week:Colour_code), data = Combo_behav_no_state, family = ziGamma(link="log"), ziformula = ~ 1 + Total_nr_display)
+summary(combo_visit_dur_gamma_hurdle_sl_mm)
+check_overdispersion(combo_visit_dur_gamma_hurdle_sl_mm)
+confint(combo_visit_dur_gamma_hurdle_sl_mm, level = 0.95, method = "profile")
+# Not converging
+
+
+```
+
+
+# IV/3c. Number of copulation attempts
+
+
+```{r Copulation attempts}
+
+## Model1: intercept only models
+
+# Neg bin zi
+combo_cop_nr__nb_zi_mm <- glmmTMB(Copulation_nr ~  Condition + Total_nr_display  + Combo_day +  Date2 + (1|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = nbinom2, zi = ~  1 + Total_nr_display)
+summary(combo_cop_nr__nb_zi_mm)
+performance::check_zeroinflation(combo_cop_nr__nb_zi_mm)
+check_overdispersion(combo_cop_nr__nb_zi_mm)
+check_singularity(combo_cop_nr__nb_zi_mm)
+confint(combo_cop_nr__nb_zi_mm, level = 0.95, method = "profile")
+# Ok, Final model - No Day ID effect
+
+
+## Model 2: intercept/slope models (with condition as slope)
+
+# Poisson
+combo_cop_nr_sl_mm <- glmmTMB(Copulation_nr ~ Condition + Total_nr_display  + Combo_day +  Date2 + (Condition|Combo_lek_week:Colour_code), data = Combo_behav_no_state, family = poisson(link = log))
+summary(combo_cop_nr_sl_mm)
+performance::check_zeroinflation(combo_cop_nr_sl_mm, tolerance = 0.05)
+check_overdispersion(combo_cop_nr_sl_mm)
+check_singularity(combo_cop_nr_sl_mm)
+confint(combo_cop_nr_sl_mm, level = 0.95, method = "profile")
+# Ok - final model - No Day ID effect
+
+```
+
+
+# IV/3d. Number of successful copulations
+
+
+```{r Successful copulations}
+
+## Model1: intercept only models
+
+# Zi Poisson
+combo_suc_cop_poi_zi_mm <- glmmTMB(Total_successful_copulations ~  Condition    + Combo_day +  Date2 +  Total_nr_display + (1|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = poisson(link = log), zi = ~  1 + Total_nr_display)
+summary(combo_suc_cop_poi_zi_mm)
+performance::check_zeroinflation(combo_suc_cop_poi_zi_mm)
+check_overdispersion(combo_suc_cop_poi_zi_mm)
+check_singularity(combo_suc_cop_poi_zi_mm)
+confint(combo_suc_cop_nr_zi_mm, level = 0.95, method = "profile")
+# OK - final model - No Day ID effect
+
+
+## Model 2: intercept/slope models (with condition as slope)
+
+# Zi Poisson
+combo_suc_cop_nr_sl_zi_poi_mm <- glmmTMB(Total_successful_copulations ~  Condition   + Combo_day +  Date2 + Total_nr_display + (Condition|Combo_lek_week:Colour_code), data = Combo_behav_no_state,  family = poisson(link = log), zi = ~  1 )
+summary(combo_suc_cop_nr_sl_zi_poi_mm)
+performance::check_zeroinflation(combo_suc_cop_nr_sl_zi_poi_mm)
+check_overdispersion(combo_suc_cop_nr_sl_zi_poi_mm)
+check_singularity(combo_suc_cop_nr_sl_zi_poi_mm)
+confint(combo_suc_cop_nr_sl_zi_poi_mm, level = 0.95) # with method = profile it's not converging
+# not converging
+
+```
+
+
+
+### V. Exploratory analyses II: Within-Resident differences between Satellite and Control conditions - Method 3
+
+## Using the "Male group ID" with "Repeat order: 1/2" for the two repeats of each male group   
+
+
+```{r Data preparation Method 2}
+
+# Creating "Repeat order" for male groups repeated two times over the season 
+
+Combo_behav_no_state <- Combo_behav_no_state %>% group_by(Combo_lek) %>% arrange(Week) %>% mutate(Combo_lek_repeat = as.numeric(as.factor(Week))) %>% relocate(Combo_lek_repeat, .after = Combo_day)
+
+# Adjusting week so that 7 and 8 weeks are really the same week
+
+Combo_behav_no_state <- Combo_behav_no_state %>% mutate(Week2 = ifelse(Week == 8, 7, Week))
+
+Combo_behav_no_state$Week2 <- as.numeric(as.character(Combo_behav_no_state$Week2))
+
+```
+
+
+## V/1. Display behaviour
+
+
+```{r Display actVity score}
+
+## Model 1: Only intercept models
+
+
+# Zero inflation neg bin model
+combo_displ_nr_zi_nb_mm <- glmmTMB(Total_nr_display ~  Condition  + Combo_lek_repeat + Week2  + (1|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = nbinom2, zi = ~  1)
+summary(combo_displ_nr_zi_nb_mm)
+performance::check_zeroinflation(combo_displ_nr_zi_nb_mm)
+check_overdispersion(combo_displ_nr_zi_nb_mm)
+check_singularity(combo_displ_nr_zi_nb_mm)
+confint(combo_displ_nr_zi_nb_mm, level = 0.95, method = "profile")
+# No repeat order effect
+
+
+## Model 2: intercept/slope models (with condition as slope):these are not converging well and are zero inflated or over dispersed so they were not used
+
+combo_displ_nr_poi_sl_mm <- glmmTMB(Total_nr_display ~  Condition  + Combo_lek_repeat + Week2  + (Condition|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = poisson(link = log), zi = ~ 1)
+summary(combo_displ_nr_poi_sl_mm)
+performance::check_zeroinflation(combo_displ_nr_poi_sl_mm)
+check_overdispersion(combo_displ_nr_poi_sl_mm)
+check_singularity(combo_displ_nr_poi_sl_mm)
+# No repeat order effect - convergence problem
+
+
+```
+
+
+## V/2. Aggressive behaviour
+
+
+## V/2a. Number of chases against Residents
+
+
+```{r Number of chases against Residents}
+
+
+## Model 1: Only intercept models
+
+# Zi neg bin
+combo_aggression_res_chasing_nb_zi_mm <- glmmTMB(Chasings_res ~  Condition  + Combo_lek_repeat + Week2  + Total_nr_display + (1|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = nbinom2, zi = ~ 1 + Total_nr_display)
+summary(combo_aggression_res_chasing_nb_zi_mm)
+performance::check_zeroinflation(combo_aggression_res_chasing_nb_zi_mm)
+check_overdispersion(combo_aggression_res_chasing_nb_zi_mm)
+check_singularity(combo_aggression_res_chasing_nb_zi_mm)
+confint(combo_aggression_res_chasing_nb_zi_mm, level = 0.95)
+# No repeat order effect
+
+
+## Model 2: intercept/slope models (with condition as slope) - with condition slop they don't converge or the slope does not improve the model - these are not used
+
+# Zi neg bin
+combo_aggression_res_chasing_sl__nb_zi_mm <- glmmTMB(Chasings_res ~  Condition  + Combo_lek_repeat + Week2  + Total_nr_display + (Condition|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = nbinom2, zi = ~ 1 + Total_nr_display)
+summary(combo_aggression_res_chasing_sl__nb_zi_mm)
+performance::check_zeroinflation(combo_aggression_res_chasing_sl__nb_zi_mm)
+check_overdispersion(combo_aggression_res_chasing_sl__nb_zi_mm)
+check_singularity(combo_aggression_res_chasing_sl__nb_zi_mm)
+# No repeat order effect
+
+```
+
+
+## V/2b. Number of attacks against Residents
+
+
+```{r Number of attacks against Residents}
+
+## Model 1: Only intercept models
+
+# Neg bin
+combo_aggression_res_attack_nb_mm <- glmmTMB(Aggression_res_attack_approach ~  Condition  + Combo_lek_repeat + Week2  + Total_nr_display  + (1|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = nbinom2)
+summary(combo_aggression_res_attack_nb_mm)
+performance::check_zeroinflation(combo_aggression_res_attack_nb_mm)
+check_overdispersion(combo_aggression_res_attack_nb_mm)
+check_singularity(combo_aggression_res_attack_nb_mm)
+confint(combo_aggression_res_attack_nb_mm, level = 0.95, method = "profile")
+# No repeat order effect
+
+
+## Model 2: intercept/slope models (with condition as slope)
+
+# Neg bin
+combo_aggression_res_attack_sl_nb_mm <- glmmTMB(Aggression_res_attack_approach ~  Condition  + Combo_lek_repeat + Week2  + Total_nr_display  + (Condition|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = nbinom2)
+summary(combo_aggression_res_attack_sl_nb_mm)
+performance::check_zeroinflation(combo_aggression_res_attack_sl_nb_mm)
+check_overdispersion(combo_aggression_res_attack_sl_nb_mm)
+check_singularity(combo_aggression_res_attack_sl_nb_mm)
+confint(combo_aggression_res_attack_sl_nb_mm, level = 0.95, method = "profile")
+# No repeat order effect
+
+```
+
+
+## V/2c. Duration of fights
+
+
+```{r Duration of fights}
+
+Combo_behav_no_state$Fight_dur_s_tr <- ifelse(Combo_behav_no_state$Fight_dur_s == 0, 0, sqrt(Combo_behav_no_state$Fight_dur_s))
+
+## Model 1: Only intercept models - Random variable has no effect
+
+# Gamma hurdle
+combo_figth_dur_mm_gamma <- glmmTMB(Fight_dur_s_tr ~  Condition  + Combo_lek_repeat + Week2  + Total_nr_display + (1|Combo_lek:Colour_code) , data = Combo_behav_no_state, family = ziGamma(link="log"), ziformula = ~ 1 + Total_nr_display)
+summary(combo_figth_dur_mm_gamma)
+check_overdispersion(combo_figth_dur_mm_gamma)
+confint(combo_figth_dur_mm_gamma, level = 0.95, method = "profile")
+# No repeat order effect
+
+
+## Model 2: intercept/slope models (with condition as slope)
+
+combo_figth_dur_sl_mm_lnorm <- glmmTMB(Fight_dur_s_tr ~  Condition  + Combo_lek_repeat + Week2  + Total_nr_display + (Condition|Combo_lek:Colour_code) , data = Combo_behav_no_state,family = glmmTMB::lognormal(link="log"),  ziformula = ~ Total_nr_display)
+summary(combo_figth_dur_sl_mm_lnorm)
+check_overdispersion(combo_figth_dur_sl_mm_lnorm)
+# No repeat order effect - convergence problem
+
+
+```
+
+
+## V/2d. Number of chases against non-Residents
+
+
+```{r Number of chases against non-Residents}
+
+
+# Creating a uniform variable for the non-Residents
+Combo_behav_no_state$Chasings_marg_sat <-  rowSums(Combo_behav_no_state[,c("Chasings_marg", "Chasings_sat")], na.rm=TRUE)
+ 
+## Model 1: Only intercept models - Random variable has no effect
+
+# zi neg bin
+combo_aggression_total_nb_zi_mm <- glmmTMB(Chasings_marg_sat ~ Condition  + Combo_lek_repeat + Week2  + Total_nr_display  + (1|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = nbinom2, zi = ~ 1 + Total_nr_display)
+summary(combo_aggression_total_nb_zi_mm)
+performance::check_zeroinflation(combo_aggression_total_nb_zi_mm)
+check_overdispersion(combo_aggression_total_nb_zi_mm)
+check_singularity(combo_aggression_total_nb_zi_mm)
+confint(combo_aggression_total_nb_zi_mm, level = 0.95, method = "profile")
+# No repeat order effect - convergence problem 
+
+
+## Model 2: intercept/slope models (with condition as slope) - slope has very little effect
+
+# Zi poisson
+combo_chasings_total_sl_poi_zi_mm <- glmmTMB(Chasings_marg_sat ~  Condition  + Combo_lek_repeat + Week2  + Total_nr_display  + (Condition|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = poisson(link = log), zi = ~ 1 + Total_nr_display)
+summary(combo_chasings_total_sl_poi_zi_mm)
+performance::check_zeroinflation(combo_chasings_total_sl_poi_zi_mm)
+check_overdispersion(combo_chasings_total_sl_poi_zi_mm)
+check_singularity(combo_chasings_total_sl_poi_zi_mm)
+confint(combo_chasings_total_sl_poi_zi_mm, level = 0.95)
+# No repeat order effect
+
+
+```
+
+
+## V/2e. Number of attacks against non-Residents
+
+
+```{r Number of attacks against non-Residents }
+
+
+# Creating a uniform variable for the non-Residents
+Combo_behav_no_state$Attacks_marg_sat <- rowSums(Combo_behav_no_state[,c("Attacks_marg", "Attacks_sat")], na.rm=TRUE)
+  
+## Model 1: Only intercept models
+
+# Poisson
+combo_aggression_total_poi_mm <- glmmTMB(Attacks_marg_sat ~  Condition  + Combo_lek_repeat + Week2  + Total_nr_display  + (1|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = poisson(link = "log"))
+summary(combo_aggression_total_poi_mm)
+performance::check_zeroinflation(combo_aggression_total_poi_mm)
+check_overdispersion(combo_aggression_total_poi_mm)
+check_singularity(combo_aggression_total_poi_mm)
+confint(combo_aggression_total_poi_mm, level = 0.95, method = "profile")
+# No repeat order effect
+
+## Model 2: intercept/slope models (with condition as slope) - slope has very little effect
+
+# Poisson
+combo_aggression_total_sl_poi_mm <- glmmTMB(Attacks_marg_sat ~  Condition  + Combo_lek_repeat + Week2  + Total_nr_display  + (Condition|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = poisson(link = "log"))
+summary(combo_aggression_total_sl_poi_mm)
+performance::check_zeroinflation(combo_aggression_total_sl_poi_mm)
+check_overdispersion(combo_aggression_total_sl_poi_mm)
+check_singularity(combo_aggression_total_sl_poi_mm)
+# No repeat order effect
+
+```
+
+
+## V/3. Female mate choice 
+
+
+# Probability of female visits (a), copulation attempts (b) and successful copulations (c) for a Resident over a group period
+
+```{r Probability of female choice models}
+
+# Visits
+
+Combo_behav_no_state <- Combo_behav_no_state %>% mutate(Visit_occurrence_week = if_else(Visit_occurrence > 0, 1, 0)) %>% relocate(Visit_occurrence_week, .after = Visit_occurrence) %>% group_by(Combo_lek, Colour_code) %>% mutate(Co_displ_occurrence2 = sum(Co_displ_occurrence)) %>% relocate(Co_displ_occurrence2, .after = Co_displ_occurrence) %>% mutate(Co_displ_occurrence2 = if_else(Co_displ_occurrence2 >0, 1, 0))
+
+Combo_vis_occ_log_reg <- glmer(Visit_occurrence_week ~ Condition + Total_nr_display  + Combo_lek_repeat + Week2  + (1|Combo_lek:Colour_code), family = "binomial", data = Combo_behav_no_state)
+summary(Combo_vis_occ_log_reg)
+# No repeat order effect
+
+
+# Copulation attempts
+
+Combo_behav_no_state <- Combo_behav_no_state %>% mutate(Copulation_occurrence_week = if_else(Copulation_occurrence > 0, 1, 0)) %>% relocate(Copulation_occurrence_week, .after = Copulation_occurrence) %>% group_by(Combo_lek, Colour_code) %>% mutate(Co_displ_occurrence2 = sum(Co_displ_occurrence)) %>% relocate(Co_displ_occurrence2, .after = Co_displ_occurrence) %>% mutate(Co_displ_occurrence2 = if_else(Co_displ_occurrence2 >0, 1, 0))
+
+Comb_cop_occ_log_reg <- glmer(Copulation_occurrence_week ~ Condition  + Combo_lek_repeat + Week2  + Total_nr_display + (1|Combo_lek:Colour_code), family = "binomial", data = Combo_behav_no_state)
+summary(Comb_cop_occ_log_reg)
+confint(Comb_cop_occ_log_reg)
+# No repeat order effect
+
+## Successful copulation occurrence per male per week
+
+Combo_behav_no_state <- Combo_behav_no_state %>% mutate(Copulation_occurrence_successful_week = if_else(Copulation_occurrence_successful > 0, 1, 0)) %>% relocate(Copulation_occurrence_successful_week, .after = Copulation_occurrence_successful) %>% group_by(Combo_lek, Colour_code) %>% mutate(Co_displ_occurrence2 = sum(Co_displ_occurrence)) %>% relocate(Co_displ_occurrence2, .after = Co_displ_occurrence) %>% mutate(Co_displ_occurrence2 = if_else(Co_displ_occurrence2 >0, 1, 0))
+
+Combos_suc_cop_occ_log_reg <- glm(Copulation_occurrence_successful_week ~ Condition  + Combo_lek_repeat + Week2  + Total_nr_display, family = "binomial", data = Combo_behav_no_state)
+summary(Combos_suc_cop_occ_log_reg)
+confint(Combos_suc_cop_occ_log_reg)
+# No repeat order effect
+
+```
+
+
+# V/3a. Total number of female visits
+
+```{r Total number of female visits}
+
+# Zero_inflated neg bin
+combo_visit_nr_zi_mm <- glmmTMB(Total_visit_nr_all_females ~  Total_nr_display + Condition  + Combo_lek_repeat + Week2  + (1|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = nbinom2, zi = ~  1 + Total_nr_display)
+summary(combo_visit_nr_zi_mm)
+performance::check_zeroinflation(combo_visit_nr_zi_mm)
+check_overdispersion(combo_visit_nr_zi_mm)
+check_singularity(combo_visit_nr_zi_mm)
+confint(combo_visit_nr_zi_mm, level = 0.95, method = "profile")
+# No repeat order effect
+
+
+## Model 2: intercept/slope models (with condition as slope)
+
+# Zi Poisson
+combo_visit_nr_zi_sl_poi_mm <- glmmTMB(Total_visit_nr_all_females ~  Condition + Total_nr_display  + Combo_lek_repeat + Week2  + (Condition|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = poisson(link = log), zi = ~  1 )
+summary(combo_visit_nr_zi_sl_poi_mm)
+performance::check_zeroinflation(combo_visit_nr_zi_sl_poi_mm)
+check_overdispersion(combo_visit_nr_zi_sl_poi_mm)
+check_singularity(combo_visit_nr_zi_sl_poi_mm)
+confint(combo_visit_nr_zi_sl_poi_mm, level = 0.95)
+# No repeat order effect
+
+
+```
+
+
+# V/3b. Total duration of female visits
+
+
+```{r Total duration of female visits}
+
+## Model1 - intercept only
+
+Combo_behav_no_state$Total_visit_duration_all_females_tr <- ifelse(Combo_behav_no_state$Total_visit_duration_all_females == 0, 0, sqrt(Combo_behav_no_state$Total_visit_duration_all_females))
+
+# Lognorm hurdle model
+combo_visit_dur_lognorm_hurdle_mm <- glmmTMB(Total_visit_duration_all_females_tr ~ Condition + Total_nr_display  + Combo_lek_repeat + Week2  + (1|Combo_lek:Colour_code), data = Combo_behav_no_state, family = glmmTMB::lognormal(link="log"), ziformula = ~ 1 + Total_nr_display)
+summary(combo_visit_dur_lognorm_hurdle_mm)
+check_overdispersion(combo_visit_dur_lognorm_hurdle_mm)
+# No repeat order effect
+
+
+## Model 2: intercept/slope models (with condition as slope)
+
+# Transformed data does not converge
+combo_visit_dur_gamma_hurdle_sl_mm <- glmmTMB(Total_visit_duration_all_females ~ Condition  + Combo_lek_repeat + Week2  + (Condition|Combo_lek:Colour_code), data = Combo_behav_no_state, family = ziGamma(link="log"), ziformula = ~ 1 + Total_nr_display)
+summary(combo_visit_dur_gamma_hurdle_sl_mm)
+check_overdispersion(combo_visit_dur_gamma_hurdle_sl_mm)
+confint(combo_visit_dur_gamma_hurdle_sl_mm, level = 0.95, method = "profile")
+# Not converging - No repeat order effect
+
+
+```
+
+
+# V/3c. Number of copulation attempts
+
+
+```{r Copulation attempts}
+
+## Model1: intercept only models
+
+# Neg bin zi
+combo_cop_nr__nb_zi_mm <- glmmTMB(Copulation_nr ~  Condition + Total_nr_display  + Combo_lek_repeat + Week2  + (1|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = nbinom2, zi = ~  1 + Total_nr_display)
+summary(combo_cop_nr__nb_zi_mm)
+performance::check_zeroinflation(combo_cop_nr__nb_zi_mm)
+check_overdispersion(combo_cop_nr__nb_zi_mm)
+check_singularity(combo_cop_nr__nb_zi_mm)
+confint(combo_cop_nr__nb_zi_mm, level = 0.95, method = "profile")
+# No repeat order effect
+
+
+## Model 2: intercept/slope models (with condition as slope)
+
+# Poisson
+combo_cop_nr_sl_mm <- glmmTMB(Copulation_nr ~ Condition + Total_nr_display  + Combo_lek_repeat + Week2  + (Condition|Combo_lek:Colour_code), data = Combo_behav_no_state, family = poisson(link = log))
+summary(combo_cop_nr_sl_mm)
+performance::check_zeroinflation(combo_cop_nr_sl_mm, tolerance = 0.05)
+check_overdispersion(combo_cop_nr_sl_mm)
+check_singularity(combo_cop_nr_sl_mm)
+confint(combo_cop_nr_sl_mm, level = 0.95, method = "profile")
+# No repeat order effect
+
+```
+
+
+# V/3d. Number of successful copulations
+
+
+```{r Successful copulations}
+
+## Model1: intercept only models
+
+# Zi Poisson
+combo_suc_cop_poi_zi_mm <- glmmTMB(Total_successful_copulations ~  Condition    + Combo_lek_repeat + Week2  +  Total_nr_display + (1|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = poisson(link = log), zi = ~  1 + Total_nr_display)
+summary(combo_suc_cop_poi_zi_mm)
+performance::check_zeroinflation(combo_suc_cop_poi_zi_mm)
+check_overdispersion(combo_suc_cop_poi_zi_mm)
+check_singularity(combo_suc_cop_poi_zi_mm)
+confint(combo_suc_cop_nr_zi_mm, level = 0.95, method = "profile")
+# No repeat order effect
+
+
+## Model 2: intercept/slope models (with condition as slope)
+
+# Zi Poisson
+combo_suc_cop_nr_sl_zi_poi_mm <- glmmTMB(Total_successful_copulations ~  Condition   + Combo_lek_repeat + Week2 + Total_nr_display + (Condition|Combo_lek:Colour_code), data = Combo_behav_no_state,  family = poisson(link = log), zi = ~  1 )
+summary(combo_suc_cop_nr_sl_zi_poi_mm)
+performance::check_zeroinflation(combo_suc_cop_nr_sl_zi_poi_mm)
+check_overdispersion(combo_suc_cop_nr_sl_zi_poi_mm)
+check_singularity(combo_suc_cop_nr_sl_zi_poi_mm)
+confint(combo_suc_cop_nr_sl_zi_poi_mm, level = 0.95) # with method = profile it's not converging
+# not converging - No repeat order effect
+
+```
+
+
+### VI. Exploratory analyses III: Dominance hierarchy models
+
+# Adding dominance hierarchy (rank) to models
+
+
+```{r Dominance hierarchy between Residents within the same Resident group}
+
+# Data set
+
+Session_behav_all_res <- read.csv("Resident cooperation MS Kupan Data/Session_behav_no_state_aggression.csv")
+
+Session_behav_all_res$Aggression_total <- Session_behav_all_res$Chasings_total + Session_behav_all_res$Attacks_total + Session_behav_all_res$Aggression_attack_approach_total
+
+Session_behav_all_res <- Session_behav_all_res %>% group_by(Video_ID) %>% arrange(desc(Aggression_total)) %>% mutate(Dominance_hierarchy = seq(Aggression_total)) %>% mutate(Dominance_hierarchy = ifelse(Aggression_total == 0, 3, Dominance_hierarchy)) %>% mutate(Dominance_hierarchy = ifelse(is.na(Aggression_total == TRUE), NA, Dominance_hierarchy)) %>% arrange(Session_ID, Dominance_hierarchy)
+
+```
+
+
+
+```{r Hierarch plots}
+
+# Plots 
+
+ggplot(Session_behav_all_res[!is.na(Session_behav_all_res$Dominance_hierarchy), ], aes(as.factor(Dominance_hierarchy), y = Total_nr_display, fill = factor(Dominance_hierarchy))) +
+  geom_boxplot()+
+  scale_fill_manual(values = c('#3ed9d8', "#a26ca6", "#c08f3c")) + 
+  theme_blank() +
+    xlab("Dominance hieararchy in session ")+
+    ylab("Display activity score (DAS)") +
+    theme(legend.title = element_blank())
+  
+
+ggplot(Session_behav_all_res[!is.na(Session_behav_all_res$Dominance_hierarchy), ], aes(as.factor(Dominance_hierarchy), Co.display_total_duration_s_session, fill = factor(Dominance_hierarchy))) +
+  geom_boxplot()+
+  scale_fill_manual(values = c('#3ed9d8', "#a26ca6", "#c08f3c")) + 
+  theme_blank() +
+    xlab("Dominance hieararchy in session ")+
+    ylab("Duration co-display (s)") +
+    theme(legend.title = element_blank())
+
+ggplot(Session_behav_all_res[!is.na(Session_behav_all_res$Dominance_hierarchy), ], aes(as.factor(Dominance_hierarchy), Copulation_nr,fill = factor(Dominance_hierarchy))) +
+  geom_boxplot()+
+  scale_fill_manual(values = c('#3ed9d8', "#a26ca6", "#c08f3c")) + 
+  theme_blank() +
+    xlab("Dominance hieararchy in session ")+
+    ylab("# copulation attempts") +
+    theme(legend.title = element_blank())
+
+```
+
