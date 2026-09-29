@@ -68,10 +68,7 @@ library(sjPlot)
 ```{r Data sets}
 
 # Only Resident behaviour data set
-Session_behav_all_res <- read.csv("Resident cooperation MS Kupan Data/Session_behav_no_state_aggression.csv")
-
-# Resident + Satellite data set (both resident and Satellite copulations and received visits)
-Session_behav_df_res_sat <- read.csv("Resident cooperation MS Kupan Data/session_behav_df_full.csv")
+Session_behav_all_res <- read.csv("Session_behav_no_state_aggression.csv")
 
 ```
 
@@ -85,10 +82,10 @@ Identifying variables that influences female visits and copulations over the sea
 
 ```{r Non-social predictors data set prep}
 
-Session_behav_df_res_sat <- read.csv("Resident cooperation MS Kupan Data/session_behav_df_full.csv")
+Session_behav_df <- read.csv("Resident cooperation MS Kupan Data/session_behav_df_full.csv")
 
 # Merging data across sessions
-Female_baseline <- Session_behav_df_res_sat %>% group_by(Session_ID, Video_ID, Condition, Fm_ID, Time, Date, Date2, Week, Combo_lek_week, Combo_lek) %>% 
+Female_baseline <- Session_behav_df %>% group_by(Session_ID, Video_ID, Condition, Fm_ID, Time, Date, Date2, Week, Combo_lek_week, Combo_lek) %>% 
   summarize(across(c(Female_max_id, Female_max_id, Total_visit_duration_all_females, Total_visit_nr_all_females, Total_nr_display, Total_nr_display_with_Sat, Total_nr_display_Res_ind, Total_nr_display_Sat_ind, Female_cop_max_id, Interrupted_copulations_nr_OtherR, Interrupted_copulations_nr_OtherS, Interrupted_copulations_nr_PartnerR, Interrupted_copulations_nr_PartnerS, Successful_copulations_nr, Interrupted_total,Female_mount_max_id, Mount_nr, Female_max_crouching_id, Crouching_nr, Copulation_attempt,Copulation_nr, Total_successful_copulations, Total_copulation_nr, Co.display_total_nr_session, Co.display_total_duration_s_session, Aggression_total, Fight_dur_s), \(x) sum(x, na.rm = TRUE)), across(c(Total_copulation_occurrence, Copulation_occurrence),  \(x) mean(x, na.rm = TRUE)))
 
 Female_baseline$Total_copulation_occurrence <- ifelse(Female_baseline$Total_copulation_occurrence > 0, 1, Female_baseline$Total_copulation_occurrence)

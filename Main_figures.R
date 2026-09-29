@@ -1,6 +1,6 @@
 # Main text figures 
 
-session_counts <- Session_behav_sat_no_state %>%
+session_counts <- Session_behav_sat %>%
   group_by(Video_ID) %>%
   count(Session_display_rank) %>%
   pivot_wider(
@@ -22,103 +22,44 @@ library(ggpubr)
 
 # Session level figures --------------
 
-## data ------
+## Calling data ------
   
-Session_behav_no_state <- read.csv("Residents benefits ms data analysis Kriszti Jelena/Session_behav_no_state_aggression.csv")
-Session_behav_sat_no_state <- Session_behav_no_state %>% filter(Condition == "Satellite")
+# Data set prep: Only Resident behaviour data set
+
+Session_behav_all_res <- read.csv("Resident cooperation MS Kupan Data/Session_behav_no_state_aggression.csv")
+
+
+# Only Satellite condition
+
+Session_behav_sat <- Session_behav_all_res %>% filter(Condition == "Satellite") 
+
 
 #how many sessions 
-length(unique(Session_behav_sat_no_state$Session_ID))
+length(unique(Session_behav_sat$Session_ID))
 # 59 sessions 
 
 # how many session with co-display
-length(unique(Session_behav_sat_no_state$Video_ID[Session_behav_sat_no_state$Co_disp_session == "1"]))
-# 53
+length(unique(Session_behav_sat$Video_ID[Session_behav_sat$Co_disp_session == "1"]))
+# 54
 
-length(unique(Session_behav_sat_no_state$Video_ID))
+length(unique(Session_behav_sat$Video_ID))
 # 60
 
-# Figure 3 ------------------
+
+### Figure 3 ------------------
+
 # these were later combined in photoshop 
-## female visits numbers ------
-# model 
-# f visits nr (update with date and female compartment)
-res_session_vis_nr_nb <- glmmTMB(Total_visit_nr_all_females ~ scale(Co.display_total_duration_s_session)  +  Total_nr_display + Fm_ID + Date2 + (1|Video_ID) + (1|Colour_code), data = Session_behav_sat_no_state,  family = nbinom2, zi = ~ 0)
+
+## Figure 3A: female visits numbers ------
+
+# model: f visits nr (update with date and female compartment)
+res_session_vis_nr_nb <- glmmTMB(Total_visit_nr_all_females ~  scale(Co.display_total_duration_s_session)  +  Total_nr_display + Fm_ID + Date2 + (1|Combo_lek) + (1|Colour_code), family = nbinom2, data = Session_behav_sat, zi = ~ 0)
 summary(res_session_vis_nr_nb)
 
-### female visits vs co-display duration ---------
-visit_nr_session <- plot_model(res_session_vis_nr_nb, type = "pred", 
-                              terms = c("Co.display_total_duration_s_session"), 
-                              colors = "#6e9e55") +
-  geom_point(data = Session_behav_sat_no_state, 
-             aes(x = Co.display_total_duration_s_session, 
-                 y = Total_visit_nr_all_females), 
-             alpha = 0.7, shape = 21, size = 5, stroke = 1, 
-             color = "black", fill = "#6e9e55") +
-  labs(x = "Duration of co-display [s]", 
-       y = "Number of female visits", 
-       title = NULL) +
-  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10)) +
-  theme_classic2(base_size = 20) +
-  theme(
-    text = element_text(size = 22),
-    axis.title = element_text(size = 22),
-    axis.text = element_text(size = 22, color = "black"),
-    legend.position = "none" # make sure the axis lines are here 
-  ) +
-  guides(color = guide_legend(override.aes = list(size = 3))) +
-  theme(legend.position = "none") +
-  guides(color = guide_legend(override.aes = list(size = 3))) +
-  update_geom_defaults("line", list(size = 1.5))
-# save 
-ggsave("visit_nr_session.png", visit_nr_session, width = 7, height = 6, dpi = 600)
-
-### female visit numbers colored by co-display time  -------------
-# Create a new column to flag zeros vs special cases
-Session_behav_sat_no_state$PointFlagVisits <- ifelse(
-  Session_behav_sat_no_state$Co.display_total_duration_s_session == 0 & 
-    Session_behav_sat_no_state$Total_visit_nr_all_females > 0, "ZeroCoDisplay_Vis", 
-  ifelse(Session_behav_sat_no_state$Total_visit_nr_all_females == 0, "Zero", "Non-zero")
-)
-
-table(Session_behav_sat_no_state$PointFlagVisits)
-#Non-zero         Zero                ZeroCoDisplay_Cop 
-#46               130                 4 
-
-visit_nr_sess_zero <- plot_model(res_session_vis_nr_nb, type = "pred", 
-                                 terms = c("Co.display_total_duration_s_session"), 
-                                 colors = "#6e9e55") +
-  geom_point(data = Session_behav_sat_no_state, 
-             aes(x = Co.display_total_duration_s_session, 
-                 y = Total_visit_nr_all_females, fill = PointFlagVisits),   # map fill to new flag
-             inherit.aes = FALSE,
-             alpha = 0.7, shape = 21, size = 5, stroke = 1, 
-             color = "black") +
-  scale_fill_manual(values = c(
-    "Zero" = "gray",                      # no visits
-    "ZeroCoDisplay_Vis" = "#9e558b",      # zero co-display but some visits
-    "Non-zero" = "#6e9e55"               # normal points
-  )) +
-  labs(x = "Duration of co-display [s]", 
-       y = "Number of female visits", title = NULL, fill = "") +
-  scale_y_continuous(
-    trans = pseudo_log_trans(base = 10)) +
-  theme_classic2(base_size = 20) +
-  theme(
-    text = element_text(size = 22),
-    axis.title = element_text(size = 22),
-    axis.text = element_text(size = 22, color = "black"),
-    legend.position = "none" # make sure the axis lines are here 
-  ) +
-  guides(color = guide_legend(override.aes = list(size = 3))) +
-  update_geom_defaults("line", list(size = 1.5))
-# save 
-ggsave("visit_nr_session_zero.png", visit_nr_sess_zero, width = 7, height = 6, dpi = 600)
-
-### female visit numbers colored by session display rank -----------
+# Plot: female visit numbers colored by session display rank -----------
 # make session display rank into alpha beta gamma
-Session_behav_sat_no_state$Session_display_rank <- factor(
-  Session_behav_sat_no_state$Session_display_rank,
+Session_behav_sat$Session_display_rank <- factor(
+  Session_behav_sat$Session_display_rank,
   levels = c(1, 2, 3),
   labels = c("Alpha", "Beta", "Gamma")
 )
@@ -126,16 +67,17 @@ Session_behav_sat_no_state$Session_display_rank <- factor(
 visit_nr_hierarchy <- plot_model(res_session_vis_nr_nb, type = "pred", 
                                  terms = c("Co.display_total_duration_s_session"), 
                                  colors = "black") +
-  geom_point(data = Session_behav_sat_no_state, 
+  geom_point(data = Session_behav_sat, 
              aes(x = Co.display_total_duration_s_session, 
-                 y = Total_visit_nr_all_females, fill = factor(Session_display_rank)),
+                 y = Total_visit_nr_all_females, 
+                 fill = factor(Session_display_rank)),
              inherit.aes = FALSE,
              alpha = 0.7, shape = 21, size = 5, stroke = 1, 
              color = "black") +
   scale_fill_manual(values = c(
-    "Alpha" = "#1a8d8d",                     # alpha
+    "Alpha" = "#1a8d8d",     # alpha
     "Beta" = "#b366b3",      # beta
-    "Gamma" = "#a8902a"                # gamma
+    "Gamma" = "#a8902a"      # gamma
   )) +
   labs(x = "Duration of co-display [s]", 
        y = "Number of female visits", title = NULL, fill = "") +
@@ -151,10 +93,13 @@ visit_nr_hierarchy <- plot_model(res_session_vis_nr_nb, type = "pred",
   guides(color = guide_legend(override.aes = list(size = 3))) +
   update_geom_defaults("line", list(size = 1.5))
 # save 
-ggsave("visit_nr_hierarchy.png", visit_nr_hierarchy, width = 7, height = 6, dpi = 600)
+# ggsave("visit_nr_hierarchy.png", visit_nr_hierarchy, width = 7, height = 6, dpi = 600)
+
+
+### Exploratory hierarchy plots
 
 # boxplot 
-ggplot(Session_behav_sat_no_state,
+ggplot(Session_behav_sat,
        aes(factor(Session_display_rank),
            Total_visit_nr_all_females,
            fill = factor(Session_display_rank))) +
@@ -172,7 +117,7 @@ ggplot(Session_behav_sat_no_state,
   theme(legend.position = "none")
 
 # violin 
-ggplot(Session_behav_sat_no_state,
+ggplot(Session_behav_sat,
        aes(factor(Session_display_rank),
            Total_visit_nr_all_females,
            fill = factor(Session_display_rank))) +
@@ -189,97 +134,34 @@ ggplot(Session_behav_sat_no_state,
        y = "Number of female visits", title = NULL, fill = "") +
   theme(legend.position = "none")
 
-## visit duration -----------------
-# model 
-visit_dur_lognorm_hurdle_m <- glmmTMB(Total_visit_duration_all_females ~ Date2 + Fm_ID + scale(Co.display_total_duration_s_session)  +  Total_nr_display + (1|Video_ID), data=Session_behav_sat_no_state, family = glmmTMB::lognormal(link="log"), ziformula = ~ 1  +  Total_nr_display )
+
+## Figure 3B: visit duration -----------------
+
+# model - for the figure we use the original and not the transformed scale 
+visit_dur_lognorm_hurdle_m <- glmmTMB(Total_visit_duration_all_females ~ Date2 + Fm_ID + scale(Co.display_total_duration_s_session)  +  Total_nr_display + (1|Session_ID), data=Session_behav_sat, 
+                                      family = glmmTMB::lognormal(link="log"), ziformula = ~ 1  +  Total_nr_display )
 summary(visit_dur_lognorm_hurdle_m)
 
-### duration of visits vs co-display duration -------
-visit_dur_sess_final <- 
-  plot_model(visit_dur_lognorm_hurdle_m, 
-             type = "pred", 
-             terms = c("Co.display_total_duration_s_session"), 
-             colors = "#6e9e55") +
-  geom_point(data = Session_behav_sat_no_state, 
-             aes(x = Co.display_total_duration_s_session, 
-                 y = Total_visit_duration_all_females), 
-             inherit.aes = FALSE,           # avoids alpha warning
-             alpha = 0.7, shape = 21, size = 5, stroke = 1,
-             color = "black", fill = "#6e9e55") +
-  labs(x = "Duration of co-display [s]", 
-       y = "Duration of female visits [s]", 
-       title = NULL) +
-  scale_y_continuous(trans = pseudo_log_trans(base = 10, sigma = 100), 
-                     breaks = c(0, 200, 1000, 3000),
-                     labels = c("0","200", "1000", "3000")) +
-  theme_classic2(base_size = 20) +
-  theme(
-    text = element_text(size = 22),
-    axis.title = element_text(size = 22),
-    axis.text = element_text(size = 22, color = "black"),
-    legend.position = "none" # make sure the axis lines are here 
-  )  +
-  guides(color = guide_legend(override.aes = list(size = 3))) +
-  update_geom_defaults("line", list(size = 1.5))
-# save
-ggsave("visit_dur_session.png", visit_dur_sess_final, width = 7, height = 6, dpi = 600)
-
-### duration of visits colored by co-display dration 
-# Create a new column to flag zeros vs special cases
-Session_behav_sat_no_state$PointFlagVisitsDur <- ifelse(
-  Session_behav_sat_no_state$Co.display_total_duration_s_session == 0 & 
-    Session_behav_sat_no_state$Total_visit_duration_all_females > 0, "ZeroCoDisplay_Vis", 
-  ifelse(Session_behav_sat_no_state$Total_visit_duration_all_females == 0, "Zero", "Non-zero")
+Session_behav_sat$Session_display_rank <- factor(
+  Session_behav_sat$Session_display_rank,
+  levels = c(1, 2, 3),
+  labels = c("Alpha", "Beta", "Gamma")
 )
 
-table(Session_behav_sat_no_state$PointFlagVisitsDur)
-#Non-zero         Zero                ZeroCoDisplay_Cop 
-#46               130                 4 
-
-visit_dur_sess_zero <- plot_model(visit_dur_lognorm_hurdle_m, type = "pred", 
-                                  terms = c("Co.display_total_duration_s_session"), 
-                                  colors = "#6e9e55") +
-  geom_point(data = Session_behav_sat_no_state, 
-             aes(x = Co.display_total_duration_s_session, 
-                 y = Total_visit_duration_all_females, fill = PointFlagVisitsDur),   
-             inherit.aes = FALSE,
-             alpha = 0.7, shape = 21, size = 5, stroke = 1,
-             color = "black") +
-  scale_fill_manual(values = c(
-    "Zero" = "gray",                      # no visits
-    "ZeroCoDisplay_Vis" = "#9e558b",      # zero co-display but some visits
-    "Non-zero" = "#6e9e55"               # normal points
-  )) +
-  labs(x = "Duration of co-display [s]", 
-       y = "Duration of female visits [s]", title = NULL, fill = "") +
-  scale_y_continuous(trans = pseudo_log_trans(base = 10, sigma = 100),
-                     breaks = c(0, 200, 1000, 3000),
-                     labels = c("0","200", "1000", "3000")) +
-  theme_classic2(base_size = 20) +
-  theme(
-    text = element_text(size = 22),
-    axis.title = element_text(size = 22),
-    axis.text = element_text(size = 22, color = "black"),
-    legend.position = "none" # make sure the axis lines are here 
-  )  +
-  update_geom_defaults("line", list(size = 1.5))
-# save 
-ggsave("visit_dur_session_zero.png", visit_dur_sess_zero, width = 7, height = 6, dpi = 600)
-
-### female visit duration colored on session display rank -----------------
+# female visit duration colored on session display rank -----------------
 visit_duration_hierarchy <- plot_model(visit_dur_lognorm_hurdle_m, type = "pred", 
                                  terms = c("Co.display_total_duration_s_session"), 
                                  colors = "black") +
-  geom_point(data = Session_behav_sat_no_state, 
+  geom_point(data = Session_behav_sat, 
              aes(x = Co.display_total_duration_s_session, 
                  y = Total_visit_duration_all_females, fill = factor(Session_display_rank)),
              inherit.aes = FALSE,
              alpha = 0.7, shape = 21, size = 5, stroke = 1, 
              color = "black") +
   scale_fill_manual(values = c(
-    "Alpha" = "#1a8d8d",                     # alpha
-    "Beta" = "#b366b3",      # beta
-    "Gamma" = "#a8902a"              # gamma
+    "Alpha" = "#1a8d8d",    # alpha
+    "Beta" = "#b366b3",     # beta
+    "Gamma" = "#a8902a"     # gamma
   )) +
   labs(x = "Duration of co-display [s]", 
        y = "Duration of female visits", title = NULL, fill = "") +
@@ -296,10 +178,10 @@ visit_duration_hierarchy <- plot_model(visit_dur_lognorm_hurdle_m, type = "pred"
   guides(color = guide_legend(override.aes = list(size = 3))) +
   update_geom_defaults("line", list(size = 1.5))
 # save 
-ggsave("visit_dur_hierarchy.png", visit_duration_hierarchy, width = 7, height = 6, dpi = 600)
+# ggsave("visit_dur_hierarchy.png", visit_duration_hierarchy, width = 7, height = 6, dpi = 600)
 
 # boxplot 
-ggplot(Session_behav_sat_no_state,
+ggplot(Session_behav_sat,
        aes(factor(Session_display_rank),
            Total_visit_duration_all_females,
            fill = factor(Session_display_rank))) +
@@ -320,7 +202,7 @@ ggplot(Session_behav_sat_no_state,
   theme(legend.position = "none")
 
 # violin 
-ggplot(Session_behav_sat_no_state,
+ggplot(Session_behav_sat,
        aes(factor(Session_display_rank),
            Total_visit_duration_all_females,
            fill = factor(Session_display_rank))) +
@@ -341,7 +223,7 @@ ggplot(Session_behav_sat_no_state,
 
 ## copulation attempts -----------------
 # model
-cop_nr_nb_mm <- glmmTMB(Copulation_nr ~  scale(Co.display_total_duration_s_session) +  Total_nr_display + Date2 + Fm_ID + (1|Colour_code), data = Session_behav_sat_no_state, 
+cop_nr_nb_mm <- glmmTMB(Copulation_nr ~  scale(Co.display_total_duration_s_session) +  Total_nr_display + Date2 + Fm_ID + (1|Colour_code), data = Session_behav_sat, 
                         family = nbinom2, zi = ~ 0)
 summary(cop_nr_nb_mm)
 
@@ -350,7 +232,7 @@ summary(cop_nr_nb_mm)
 cop_nr_sess_final <- plot_model(cop_nr_nb_mm, type = "pred", 
                                 terms = c("Co.display_total_duration_s_session"), 
                                 colors = "#6e9e55") +
-  geom_point(data = Session_behav_sat_no_state, 
+  geom_point(data = Session_behav_sat, 
              aes(x = Co.display_total_duration_s_session, 
                  y = Copulation_nr), 
              inherit.aes = FALSE,
@@ -374,13 +256,13 @@ ggsave("cop_nr_sess.png", cop_nr_sess_final, width = 7, height = 6, dpi = 600)
 
 ### copulation attemps colored by co-display duration ---------------------
 # Create a new column to flag zeros vs special cases
-Session_behav_sat_no_state$PointFlag <- ifelse(
-  Session_behav_sat_no_state$Co.display_total_duration_s_session == 0 & 
-    Session_behav_sat_no_state$Copulation_nr > 0, "ZeroCoDisplay_Cop", 
-  ifelse(Session_behav_sat_no_state$Copulation_nr == 0, "Zero", "Non-zero")
+Session_behav_sat$PointFlag <- ifelse(
+  Session_behav_sat$Co.display_total_duration_s_session == 0 & 
+    Session_behav_sat$Copulation_nr > 0, "ZeroCoDisplay_Cop", 
+  ifelse(Session_behav_sat$Copulation_nr == 0, "Zero", "Non-zero")
 )
 
-table(Session_behav_sat_no_state$PointFlag)
+table(Session_behav_sat$PointFlag)
 # Non-zero         Zero           ZeroCoDisplay_Cop 
 # 22               156                 2 
 
@@ -388,7 +270,7 @@ cop_nr_session_0 <-
   plot_model(cop_nr_nb_mm, type = "pred", 
              terms = c("Co.display_total_duration_s_session"), 
              colors = "#6e9e55") +
-  geom_point(data = Session_behav_sat_no_state, 
+  geom_point(data = Session_behav_sat, 
              aes(x = Co.display_total_duration_s_session, 
                  y = Copulation_nr, fill = PointFlag),   # map fill to new flag
              inherit.aes = FALSE,
@@ -420,7 +302,7 @@ ggsave("cop_nr_sess_zero.png", cop_nr_session_0, width = 7, height = 6, dpi = 60
 cop_att_hierarchy <- plot_model(cop_nr_nb_mm, type = "pred", 
                                        terms = c("Co.display_total_duration_s_session"), 
                                        colors = "black") +
-  geom_point(data = Session_behav_sat_no_state, 
+  geom_point(data = Session_behav_sat, 
              aes(x = Co.display_total_duration_s_session, 
                  y = Copulation_nr, fill = factor(Session_display_rank)),
              inherit.aes = FALSE,
@@ -449,7 +331,7 @@ cop_att_hierarchy <- plot_model(cop_nr_nb_mm, type = "pred",
 ggsave("cop_att_hierarchy.png", cop_att_hierarchy, width = 7, height = 6, dpi = 600)
 
 # boxplot 
-ggplot(Session_behav_sat_no_state,
+ggplot(Session_behav_sat,
        aes(factor(Session_display_rank),
            Copulation_nr,
            fill = factor(Session_display_rank))) +
@@ -469,7 +351,7 @@ ggplot(Session_behav_sat_no_state,
     )
 
 # violin 
-ggplot(Session_behav_sat_no_state,
+ggplot(Session_behav_sat,
        aes(factor(Session_display_rank),
            Copulation_nr,
            fill = factor(Session_display_rank))) +
@@ -490,14 +372,14 @@ ggplot(Session_behav_sat_no_state,
 
 ## successful copulations ----------------
 # final model 
-res_session_suc_cop_nr_nb <- glmmTMB(Total_successful_copulations ~ scale(Co.display_total_duration_s_session)  +  Total_nr_display + Date2 + Fm_ID + (1|Colour_code), data = Session_behav_sat_no_state,  family = nbinom2, zi = ~ 0)
+res_session_suc_cop_nr_nb <- glmmTMB(Total_successful_copulations ~ scale(Co.display_total_duration_s_session)  +  Total_nr_display + Date2 + Fm_ID + (1|Colour_code), data = Session_behav_sat,  family = nbinom2, zi = ~ 0)
 summary(res_session_suc_cop_nr_nb)  
 
 ### successful copuations vs co-display duration ------------------------
 succ_cop_sess <- plot_model(res_session_suc_cop_nr_nb, type = "pred", 
                             terms = c("Co.display_total_duration_s_session"), 
                             colors = "#6e9e55") +
-  geom_point(data = Session_behav_sat_no_state, 
+  geom_point(data = Session_behav_sat, 
              aes(x = Co.display_total_duration_s_session, 
                  y = Total_successful_copulations), 
              inherit.aes = FALSE,
@@ -520,13 +402,13 @@ ggsave("succ_cop_nr_sess.png", succ_cop_sess, width = 7, height = 6, dpi = 600)
 ### successful copulations colored by co-display duration -----------------------
 # zero co display but succ cop 
 # Create a new column to flag zeros vs special cases
-Session_behav_sat_no_state$PointFlagSC <- ifelse(
-  Session_behav_sat_no_state$Co.display_total_duration_s_session == 0 & 
-    Session_behav_sat_no_state$Total_successful_copulations > 0, "ZeroCoDisplay_Cop", 
-  ifelse(Session_behav_sat_no_state$Total_successful_copulations == 0, "Zero", "Non-zero")
+Session_behav_sat$PointFlagSC <- ifelse(
+  Session_behav_sat$Co.display_total_duration_s_session == 0 & 
+    Session_behav_sat$Total_successful_copulations > 0, "ZeroCoDisplay_Cop", 
+  ifelse(Session_behav_sat$Total_successful_copulations == 0, "Zero", "Non-zero")
 )
 
-table(Session_behav_sat_no_state$PointFlagSC)
+table(Session_behav_sat$PointFlagSC)
 #Non-zero              Zero ZeroCoDisplay_Cop 
 #18               160                 2 
 
@@ -534,7 +416,7 @@ succ_cop_nr_session_0 <-
   plot_model(res_session_suc_cop_nr_nb, type = "pred", 
              terms = c("Co.display_total_duration_s_session"), 
              colors = "darkgray") +
-  geom_point(data = Session_behav_sat_no_state, 
+  geom_point(data = Session_behav_sat, 
              aes(x = Co.display_total_duration_s_session, 
                  y = Total_successful_copulations, fill = PointFlagSC),
              alpha = 0.7, shape = 21, size = 5, stroke = 1,
@@ -561,7 +443,7 @@ ggsave("succ_cop_nr_sess_zero.png", succ_cop_nr_session_0, width = 7, height = 6
 succ_cop_hierarchy <- plot_model(res_session_suc_cop_nr_nb, type = "pred", 
                                 terms = c("Co.display_total_duration_s_session"), 
                                 colors = "darkgray") +
-  geom_point(data = Session_behav_sat_no_state, 
+  geom_point(data = Session_behav_sat, 
              aes(x = Co.display_total_duration_s_session, 
                  y = Total_successful_copulations, fill = factor(Session_display_rank)),
              inherit.aes = FALSE,
