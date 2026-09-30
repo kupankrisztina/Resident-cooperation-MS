@@ -1305,6 +1305,8 @@ Combo_behav_no_state <- Combo_behav_no_state %>% group_by(Combo_lek) %>% arrange
 Combo_behav_no_state <- Combo_behav_no_state %>% mutate(Co_disp_score = round(Co.display_total_duration_s_session / 600, digits = 0)) %>% relocate(Co_disp_score, .after = Co_disp_ord ) %>% 
   group_by(Combo_lek_week, Colour_code) %>% mutate(Co_disp_score_week = sum(Co_disp_score)) %>% relocate(Co_disp_score_week, .after = Co_disp_score )
 
+write.csv(Combo_behav_no_state, "Resident cooperation MS Kupan Data/Group_period_sums.csv") 
+
 colnames(Combo_behav_no_state)
 
 Group_period_sum <- Combo_behav_no_state %>% group_by(Colour_code, Condition, Week, Fm_ID, Combo_lek_week, Combo_lek) %>% 

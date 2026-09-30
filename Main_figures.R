@@ -46,11 +46,11 @@ length(unique(Session_behav_sat$Video_ID))
 # 60
 
 
-### Figure 3 ------------------
+### Figure 2 ------------------
 
 # these were later combined in photoshop 
 
-## Figure 3A: female visits numbers ------
+## Figure 2A: female visits numbers ------
 
 # model: f visits nr (update with date and female compartment)
 res_session_vis_nr_nb <- glmmTMB(Total_visit_nr_all_females ~  scale(Co.display_total_duration_s_session)  +  Total_nr_display + Fm_ID + Date2 + (1|Combo_lek) + (1|Colour_code), family = nbinom2, data = Session_behav_sat, zi = ~ 0)
@@ -135,18 +135,13 @@ ggplot(Session_behav_sat,
   theme(legend.position = "none")
 
 
-## Figure 3B: visit duration -----------------
+## Figure 2B: visit duration -----------------
 
 # model - for the figure we use the original and not the transformed scale 
 visit_dur_lognorm_hurdle_m <- glmmTMB(Total_visit_duration_all_females ~ Date2 + Fm_ID + scale(Co.display_total_duration_s_session)  +  Total_nr_display + (1|Session_ID), data=Session_behav_sat, 
                                       family = glmmTMB::lognormal(link="log"), ziformula = ~ 1  +  Total_nr_display )
 summary(visit_dur_lognorm_hurdle_m)
 
-Session_behav_sat$Session_display_rank <- factor(
-  Session_behav_sat$Session_display_rank,
-  levels = c(1, 2, 3),
-  labels = c("Alpha", "Beta", "Gamma")
-)
 
 # female visit duration colored on session display rank -----------------
 visit_duration_hierarchy <- plot_model(visit_dur_lognorm_hurdle_m, type = "pred", 
@@ -227,77 +222,6 @@ cop_nr_nb_mm <- glmmTMB(Copulation_nr ~  scale(Co.display_total_duration_s_sessi
                         family = nbinom2, zi = ~ 0)
 summary(cop_nr_nb_mm)
 
-### copulation attempts vs co-display duration ------------------
-# numbers are just rescaled visually 
-cop_nr_sess_final <- plot_model(cop_nr_nb_mm, type = "pred", 
-                                terms = c("Co.display_total_duration_s_session"), 
-                                colors = "#6e9e55") +
-  geom_point(data = Session_behav_sat, 
-             aes(x = Co.display_total_duration_s_session, 
-                 y = Copulation_nr), 
-             inherit.aes = FALSE,
-             alpha = 0.7, shape = 21, size = 5, stroke = 1,
-             color = "black", fill = "#6e9e55") +
-  labs(x = "Duration of co-display [s]", 
-       y = "Number of copulation attempts", title = NULL) +
-  scale_y_continuous(trans = pseudo_log_trans(base = 10)) +
-  theme_classic2(base_size = 20) +
-  theme(
-    text = element_text(size = 22),
-    axis.title = element_text(size = 22),
-    axis.text = element_text(size = 22, color = "black"),
-    legend.position = "none" # make sure the axis lines are here 
-  )  +
-  guides(color = guide_legend(override.aes = list(size = 3))) +
-  scale_color_manual(values = "#6e9e55") +
-  update_geom_defaults("line", list(size = 1.5))
-#save
-ggsave("cop_nr_sess.png", cop_nr_sess_final, width = 7, height = 6, dpi = 600)
-
-### copulation attemps colored by co-display duration ---------------------
-# Create a new column to flag zeros vs special cases
-Session_behav_sat$PointFlag <- ifelse(
-  Session_behav_sat$Co.display_total_duration_s_session == 0 & 
-    Session_behav_sat$Copulation_nr > 0, "ZeroCoDisplay_Cop", 
-  ifelse(Session_behav_sat$Copulation_nr == 0, "Zero", "Non-zero")
-)
-
-table(Session_behav_sat$PointFlag)
-# Non-zero         Zero           ZeroCoDisplay_Cop 
-# 22               156                 2 
-
-cop_nr_session_0 <- 
-  plot_model(cop_nr_nb_mm, type = "pred", 
-             terms = c("Co.display_total_duration_s_session"), 
-             colors = "#6e9e55") +
-  geom_point(data = Session_behav_sat, 
-             aes(x = Co.display_total_duration_s_session, 
-                 y = Copulation_nr, fill = PointFlag),   # map fill to new flag
-             inherit.aes = FALSE,
-             alpha = 0.7,shape = 21, size = 5, stroke = 1,
-             color = "black") +
-  scale_fill_manual(values = c(
-    "Zero" = "gray",                      # no copulations
-    "ZeroCoDisplay_Cop" = "#85559e",      # zero co-display but some copulations
-    "Non-zero" = "#6e9e55"               # normal points
-  )) +
-  labs(x = "Duration of co-display [s]", 
-       y = "Number of copulation attempts", title = NULL, fill = "") +
-  scale_y_continuous(
-    trans = pseudo_log_trans(base = 10)
-  ) +
-  theme_classic2(base_size = 20) +
-  theme(
-    text = element_text(size = 22),
-    axis.title = element_text(size = 22),
-    axis.text = element_text(size = 22, color = "black"),
-    legend.position = "none" # make sure the axis lines are here 
-  )  +
-  guides(color = guide_legend(override.aes = list(size = 3))) +
-  update_geom_defaults("line", list(size = 1.5))
-# save
-ggsave("cop_nr_sess_zero.png", cop_nr_session_0, width = 7, height = 6, dpi = 600)
-
 ### copulation attempts colored by session display rank -------------------------
 cop_att_hierarchy <- plot_model(cop_nr_nb_mm, type = "pred", 
                                        terms = c("Co.display_total_duration_s_session"), 
@@ -328,7 +252,7 @@ cop_att_hierarchy <- plot_model(cop_nr_nb_mm, type = "pred",
   guides(color = guide_legend(override.aes = list(size = 3))) +
   update_geom_defaults("line", list(size = 1.5))
 # save 
-ggsave("cop_att_hierarchy.png", cop_att_hierarchy, width = 7, height = 6, dpi = 600)
+# ggsave("cop_att_hierarchy.png", cop_att_hierarchy, width = 7, height = 6, dpi = 600)
 
 # boxplot 
 ggplot(Session_behav_sat,
@@ -372,75 +296,13 @@ ggplot(Session_behav_sat,
 
 ## successful copulations ----------------
 # final model 
-res_session_suc_cop_nr_nb <- glmmTMB(Total_successful_copulations ~ scale(Co.display_total_duration_s_session)  +  Total_nr_display + Date2 + Fm_ID + (1|Colour_code), data = Session_behav_sat,  family = nbinom2, zi = ~ 0)
-summary(res_session_suc_cop_nr_nb)  
+res_session_suc_cop_nr_nb_zi <- glmmTMB(Total_successful_copulations ~ scale(Co.display_total_duration_s_session)  +  
+                                          Total_nr_display + Date2 + Fm_ID + (1|Colour_code) + (1|Combo_lek), data = Session_behav_sat,  family = nbinom2, zi = ~ Total_nr_display)
+summary(res_session_suc_cop_nr_nb_zi)  
 
-### successful copuations vs co-display duration ------------------------
-succ_cop_sess <- plot_model(res_session_suc_cop_nr_nb, type = "pred", 
-                            terms = c("Co.display_total_duration_s_session"), 
-                            colors = "#6e9e55") +
-  geom_point(data = Session_behav_sat, 
-             aes(x = Co.display_total_duration_s_session, 
-                 y = Total_successful_copulations), 
-             inherit.aes = FALSE,
-             alpha = 0.7, shape = 21, size = 5, stroke = 1,
-             color = "black", fill = "#6e9e55") +
-  labs(x = "Duration of co-display [s]", 
-       y = "Number of successful copulations", title = NULL)  +
-  theme_classic2(base_size = 20) +
-  theme(
-    text = element_text(size = 22),
-    axis.title = element_text(size = 22),
-    axis.text = element_text(size = 22, color = "black"),
-    legend.position = "none" # make sure the axis lines are here 
-  )  +
-  guides(color = guide_legend(override.aes = list(size = 3))) +
-  scale_color_manual(values = "#6e9e55") +
-  update_geom_defaults("line", list(size = 1.5))
-ggsave("succ_cop_nr_sess.png", succ_cop_sess, width = 7, height = 6, dpi = 600)
-
-### successful copulations colored by co-display duration -----------------------
-# zero co display but succ cop 
-# Create a new column to flag zeros vs special cases
-Session_behav_sat$PointFlagSC <- ifelse(
-  Session_behav_sat$Co.display_total_duration_s_session == 0 & 
-    Session_behav_sat$Total_successful_copulations > 0, "ZeroCoDisplay_Cop", 
-  ifelse(Session_behav_sat$Total_successful_copulations == 0, "Zero", "Non-zero")
-)
-
-table(Session_behav_sat$PointFlagSC)
-#Non-zero              Zero ZeroCoDisplay_Cop 
-#18               160                 2 
-
-succ_cop_nr_session_0 <- 
-  plot_model(res_session_suc_cop_nr_nb, type = "pred", 
-             terms = c("Co.display_total_duration_s_session"), 
-             colors = "darkgray") +
-  geom_point(data = Session_behav_sat, 
-             aes(x = Co.display_total_duration_s_session, 
-                 y = Total_successful_copulations, fill = PointFlagSC),
-             alpha = 0.7, shape = 21, size = 5, stroke = 1,
-             color = "black") +
-  scale_fill_manual(values = c(
-    "Zero" = "gray",                      # no copulations
-    "ZeroCoDisplay_Cop" = "#85559e",      # zero co-display but some copulations
-    "Non-zero" = "#6e9e55"               # normal points
-  )) +
-  labs(x = "Duration of co-display [s]", 
-       y = "Number of succcessful copulations", title = NULL, fill = "") +
-  theme_classic2(base_size = 20) +
-  theme(
-    text = element_text(size = 22),
-    axis.title = element_text(size = 22),
-    axis.text = element_text(size = 22, color = "black"),
-    legend.position = "none" # make sure the axis lines are here 
-  )  +
-  guides(color = guide_legend(override.aes = list(size = 3))) +
-  update_geom_defaults("line", list(size = 2.5))
-ggsave("succ_cop_nr_sess_zero.png", succ_cop_nr_session_0, width = 7, height = 6, dpi = 600)
 
 ### succ copulations colored by session display rank -------------------------
-succ_cop_hierarchy <- plot_model(res_session_suc_cop_nr_nb, type = "pred", 
+succ_cop_hierarchy <- plot_model(res_session_suc_cop_nr_nb_zi, type = "pred", 
                                 terms = c("Co.display_total_duration_s_session"), 
                                 colors = "darkgray") +
   geom_point(data = Session_behav_sat, 
@@ -466,23 +328,28 @@ succ_cop_hierarchy <- plot_model(res_session_suc_cop_nr_nb, type = "pred",
   guides(color = guide_legend(override.aes = list(size = 3))) +
   update_geom_defaults("line", list(size = 1.5))
 # save 
-ggsave("succ_cop_hierarchy.png", succ_cop_hierarchy, width = 7, height = 6, dpi = 600)
+# ggsave("succ_cop_hierarchy.png", succ_cop_hierarchy, width = 7, height = 6, dpi = 600)
 
 
-# Combo level figures --------
+
+# Figure 3 --------------
+
+### Figure3: Within individual comparison
+
 ## data -----
 Combo_behav_no_state <- read.csv("Residents benefits ms data analysis Kriszti Jelena/Combo_behav_no_state.csv")
 
-Combos_cop_sum <- read.csv("Residents benefits ms data analysis Kriszti Jelena/Combo copulations summed.csv")
+Group_period_sum <- read.csv("Residents benefits ms data analysis Kriszti Jelena/Combo copulations summed.csv")
 
 
-# Figure 4 --------------
-## female visits numbers ------
+## Figure 3A: Female visits numbers ------
 
 ## slope figure 
+
 # filter the data to make figures
 filtered_df <- Combo_behav_no_state %>% dplyr::select(Condition, Total_visit_nr_all_females, Combo_lek_week, Colour_code)
 filtered_df$Combo_lek_week_ID <- paste(filtered_df$Combo_lek_week,filtered_df$Colour_code,sep="_")
+
 # reshape the data frame for geom_segment
 reshaped_df <- filtered_df %>%
   group_by(Combo_lek_week_ID, Condition, Colour_code) %>%
@@ -588,7 +455,7 @@ y_min <- min(c(reshaped_df$Marginal_Visits, reshaped_df$Satellite_Visits)) - 2
 y_max <- max(c(reshaped_df$Marginal_Visits, reshaped_df$Satellite_Visits)) + 2
 
 # without zeros
-subset_data1 <- Combos_cop_sum %>%
+subset_data1 <- Group_period_sum %>%
   filter(Condition == "Marginal", Total_visit_nr_all_females > 0)
 
 # marginal boxplot no zeros
@@ -617,7 +484,7 @@ p1 <- ggplot(subset_data1, aes(x = Condition, y = Total_visit_nr_all_females, fi
                color = "grey70", size = 0.8)
 
 # only for satellite condition no zeros 
-subset_datas1 <- Combos_cop_sum %>%
+subset_datas1 <- Group_period_sum %>%
   filter(Condition == "Satellite", Total_visit_nr_all_females > 0)
 
 #boxplot with zeros 
@@ -647,10 +514,13 @@ p2<-ggplot(subset_datas1, aes(x = Condition, y = Total_visit_nr_all_females, fil
 
 ## combine the boxplots with the intercept slope plot 
 library(cowplot)
-#combined_plot <- cowplot::plot_grid(visits_dens_m, Individ_response_cond_visits, visits_dens_s, ncol = 3, rel_widths = c(1, 3, 1))
-#ggsave("Combined_violin_slope_plot_visits_zeros_trimmed.png", combined_plot, width = 8, height = 6, dpi = 300, bg = "transparent")
+combined_plot_visits <- cowplot::plot_grid(visits_dens_m, Individ_response_cond_visits, visits_dens_s, ncol = 3, rel_widths = c(1, 3, 1))
+ggsave("Combined_violin_slope_plot_visits_zeros_trimmed.png", combined_plot_visits, width = 8, height = 6, dpi = 300, bg = "transparent")
 # from here take it to Inkscape to nicely combine everything
-## copulation attempt nr -----
+
+
+## Figure 3B: Copulation attempts nr -----
+
 # filter the data for the plot
 filtered_df <- Combo_behav_no_state %>% dplyr::select(Condition, Copulation_nr, Combo_lek_week, Colour_code)
 filtered_df$Combo_lek_week_ID <- paste(filtered_df$Combo_lek_week,filtered_df$Colour_code,sep="_")
@@ -758,7 +628,7 @@ y_max <- max(c(reshaped_df$Marginal_Copulations, reshaped_df$Satellite_Copulatio
 # boxplots 
 
 # marginal box no zeros 
-subset_data1 <- Combos_cop_sum %>%
+subset_data1 <- Group_period_sum %>%
   filter(Condition == "Marginal", Copulation_nr > 0)
 
 p1.1 <- ggplot(subset_data1, aes(x = Condition, y = Copulation_nr, fill = Condition)) +
@@ -787,7 +657,7 @@ p1.1 <- ggplot(subset_data1, aes(x = Condition, y = Copulation_nr, fill = Condit
 
 # only for satellite condition
 # remove zeros 
-subset_data_s <- Combos_cop_sum %>%
+subset_data_s <- Group_period_sum %>%
   filter(Condition == "Satellite", Copulation_nr > 0)
 
 p2<-ggplot(subset_data_s, aes(x = Condition, y = Copulation_nr, fill = Condition)) +
@@ -817,11 +687,12 @@ p2<-ggplot(subset_data_s, aes(x = Condition, y = Copulation_nr, fill = Condition
 
 ## combine the boxplots with the intercept slope plot 
 library(cowplot)
-combined_plot <- cowplot::plot_grid(p1.1, Individ_response_cond, p2, ncol = 3, rel_widths = c(1, 3, 1))
-ggsave("Combined_box_slope_plot_cop_0values.png", combined_plot, width = 8, height = 6, dpi = 300, bg = "transparent")
+combined_plot_cop_att <- cowplot::plot_grid(p1.1, Individ_response_cond, p2, ncol = 3, rel_widths = c(1, 3, 1))
+ggsave("Combined_box_slope_plot_cop_0values.png", combined_plot_cop_att, width = 8, height = 6, dpi = 300, bg = "transparent")
 # from here take it to inkscape to nicely combine everything
 
-## successful copulation nr ----
+##Figure 3C: Successful copulation nr ----
+
 filtered_df2 <- Combo_behav_no_state %>% dplyr::select(Condition, Total_successful_copulations, Combo_lek_week, Colour_code)
 filtered_df2$Combo_lek_week_ID <- paste(filtered_df2$Combo_lek_week,filtered_df2$Colour_code,sep="_")
 
@@ -936,7 +807,7 @@ y_min2 <- other_min - 2
 y_max2 <- other_max + 2
 
 # marginal boxplot no zeros 
-subset_data <- Combos_cop_sum %>%
+subset_data <- Group_period_sum %>%
   filter(Condition == "Marginal", Total_successful_copulations > 0)
 
 p1 <- ggplot(subset_data, aes(x = Condition, y = Total_successful_copulations, fill = Condition)) +
@@ -964,7 +835,7 @@ p1 <- ggplot(subset_data, aes(x = Condition, y = Total_successful_copulations, f
                color = "grey70", size = 0.8)
 
 # satellite no zeros 
-subset_data_s <- Combos_cop_sum %>%
+subset_data_s <- Group_period_sum %>%
   filter(Condition == "Satellite", Total_successful_copulations > 0)
 
 p2 <-ggplot(subset_data_s, aes(x = Condition, y = Total_successful_copulations, fill = Condition)) +
@@ -992,5 +863,5 @@ p2 <-ggplot(subset_data_s, aes(x = Condition, y = Total_successful_copulations, 
                color = "grey70", size = 0.8)
 
 ## combine everything and then work further in Inkscape or Photoshop 
-combined_plot <- cowplot::plot_grid(p1, Individ_response_cond_succ_cop2, p2, ncol = 3, rel_widths = c(1, 3, 1))
-ggsave("Combined_violin_slope_plot_succ_cop_0values.png", combined_plot, width = 8, height = 6, dpi = 300, bg ="transparent")
+combined_plot_succ_cop <- cowplot::plot_grid(p1, Individ_response_cond_succ_cop2, p2, ncol = 3, rel_widths = c(1, 3, 1))
+ggsave("Combined_violin_slope_plot_succ_cop_0values.png", combined_plot_succ_cop, width = 8, height = 6, dpi = 300, bg ="transparent")
