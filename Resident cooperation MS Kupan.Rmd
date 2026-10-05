@@ -68,7 +68,7 @@ library(sjPlot)
 ```{r Data sets}
 
 # Only Resident behaviour data set
-Session_behav_all_res <- read.csv("Session_behav_no_state_aggression.csv")
+Session_behav_all_res <- read.csv("Resident cooperation MS Kupan Data/Session_behav_no_state_aggression.csv")
 
 ```
 
@@ -82,7 +82,7 @@ Identifying variables that influences female visits and copulations over the sea
 
 ```{r Non-social predictors data set prep}
 
-Session_behav_df <- read.csv("Resident cooperation MS Kupan Data/session_behav_df_full.csv")
+Session_behav_df <- read.csv("Resident cooperation MS Kupan Data/session_behav_df_res_sat.csv")
 
 # Merging data across sessions
 Female_baseline <- Session_behav_df %>% group_by(Session_ID, Video_ID, Condition, Fm_ID, Time, Date, Date2, Week, Combo_lek_week, Combo_lek) %>% 
@@ -1286,30 +1286,30 @@ Session_behav_all_res <- read.csv("Resident cooperation MS Kupan Data/Session_be
 
 # Slpitting Week7 a + m to week7 and week8 to have the same structure as before
 
-Combo_behav_no_state <- NULL
+Group_period_session <- NULL
 
-Combo_behav_no_state <- Session_behav_all_res
+Group_period_session <- Session_behav_all_res
 
-Combo_behav_no_state$Week <- ifelse(Combo_behav_no_state$Date == 530 | Combo_behav_no_state$Date == 602 | Combo_behav_no_state$Date == 531 & Combo_behav_no_state$Time == "m"| Combo_behav_no_state$Date == 603 & Combo_behav_no_state$Time == "m", 7, Combo_behav_no_state$Week)
+Group_period_session$Week <- ifelse(Group_period_session$Date == 530 | Group_period_session$Date == 602 | Group_period_session$Date == 531 & Group_period_session$Time == "m"| Group_period_session$Date == 603 & Group_period_session$Time == "m", 7, Group_period_session$Week)
 
-Combo_behav_no_state$Week <- ifelse(Combo_behav_no_state$Week == "7a"|Combo_behav_no_state$Week == "7m", 8, Combo_behav_no_state$Week)
+Group_period_session$Week <- ifelse(Group_period_session$Week == "7a"|Group_period_session$Week == "7m", 8, Group_period_session$Week)
 
-Combo_behav_no_state$Combo_lek_week <- paste(Combo_behav_no_state$Combo_lek, Combo_behav_no_state$Week, sep = "_")
+Group_period_session$Combo_lek_week <- paste(Group_period_session$Combo_lek, Group_period_session$Week, sep = "_")
 
 # Creating combo/day ID within conditions
 
-Combo_behav_no_state <- Combo_behav_no_state %>% group_by(Combo_lek_week, Condition) %>% mutate(Combo_day = match(paste(Date2,Time), unique(paste(Date2, Time)))) %>% arrange(Session_ID) %>% relocate(Combo_day, .after = Combo_lek)
+Group_period_session <- Group_period_session %>% group_by(Combo_lek_week, Condition) %>% mutate(Combo_day = match(paste(Date2,Time), unique(paste(Date2, Time)))) %>% arrange(Session_ID) %>% relocate(Combo_day, .after = Combo_lek)
 
-Combo_behav_no_state <- Combo_behav_no_state %>% group_by(Combo_lek) %>% arrange(Week) %>% mutate(Combo_lek_repeat = as.numeric(as.factor(Week))) %>% relocate(Combo_lek_repeat, .after = Combo_day)
+Group_period_session <- Group_period_session %>% group_by(Combo_lek) %>% arrange(Week) %>% mutate(Combo_lek_repeat = as.numeric(as.factor(Week))) %>% relocate(Combo_lek_repeat, .after = Combo_day)
 
-Combo_behav_no_state <- Combo_behav_no_state %>% mutate(Co_disp_score = round(Co.display_total_duration_s_session / 600, digits = 0)) %>% relocate(Co_disp_score, .after = Co_disp_ord ) %>% 
+Group_period_session <- Group_period_session %>% mutate(Co_disp_score = round(Co.display_total_duration_s_session / 600, digits = 0)) %>% relocate(Co_disp_score, .after = Co_disp_ord ) %>% 
   group_by(Combo_lek_week, Colour_code) %>% mutate(Co_disp_score_week = sum(Co_disp_score)) %>% relocate(Co_disp_score_week, .after = Co_disp_score )
 
-write.csv(Combo_behav_no_state, "Resident cooperation MS Kupan Data/Group_period_sums.csv") 
+write.csv(Group_period_session, "Resident cooperation MS Kupan Data/Group_period_session.csv")
 
-colnames(Combo_behav_no_state)
+colnames(Group_period_session)
 
-Group_period_sum <- Combo_behav_no_state %>% group_by(Colour_code, Condition, Week, Fm_ID, Combo_lek_week, Combo_lek) %>% 
+Group_period_sum <- Group_period_session %>% group_by(Colour_code, Condition, Week, Fm_ID, Combo_lek_week, Combo_lek) %>% 
   summarise(across(c(Session_nr, Female_max_id,Total_visit_duration_all_females,Total_visit_nr_all_females,Visits_longest_s,Visit_occurrence, Total_nr_display, Co_disp_score, Interrupted_copulations_nr_OtherR,Interrupted_copulations_nr_OtherS,Interrupted_copulations_nr_PartnerR,Interrupted_copulations_nr_PartnerS, Successful_copulations_nr,Interrupted_total,Mount_nr,Crouching_nr, Copulation_attempt, Copulation_nr, Total_successful_copulations, Co.display_total_nr_session, Co.display_total_duration_s_session,Single_display_total_duration_s_session, Single_display_to_satellite_total_nr_session, Single_display_to_both_total_nr_session, Single_display_to_both_total_duration_s_session, Paired_state_total_nr_session, Paired_state_total_duration_s_session, Co_displ_occurrence, Copulation_occurrence_successful,Copulation_occurrence, Co_disp_session, Single_display_total_duration_s_session, Single_display_to_satellite_total_nr_session, Single_display_to_both_total_nr_session, Single_display_to_both_total_duration_s_session, Copulation_occurrence_successful, Copulation_occurrence, Single_display_duration_mean_s_session, Single_display_duration_std_dev_session,Visits_longest_s, Chasings_total, Chasings_res, Chasings_sat, Chasings_marg, Attacks_total, Attacks_res, Attacks_sat, Attacks_marg, Approaches, Fight_dur_s, Aggression_res_total,  Aggression_sat_total, Aggression_total, Aggression_res_attack_approach,  Aggression_attack_approach_total), sum, na.rm = TRUE))
 
 # Creating a co-display variable for co-diplaying individuals in a session for both conditions 

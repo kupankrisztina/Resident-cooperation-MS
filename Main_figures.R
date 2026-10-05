@@ -1,13 +1,6 @@
 # Main text figures 
 
-session_counts <- Session_behav_sat %>%
-  group_by(Video_ID) %>%
-  count(Session_display_rank) %>%
-  pivot_wider(
-    names_from = Session_display_rank,
-    values_from = n,
-    values_fill = 0
-  )
+
 
 # libraries -----
 library(ggplot2)
@@ -27,7 +20,6 @@ library(ggpubr)
 # Data set prep: Only Resident behaviour data set
 
 Session_behav_all_res <- read.csv("Resident cooperation MS Kupan Data/Session_behav_no_state_aggression.csv")
-
 
 # Only Satellite condition
 
@@ -64,7 +56,7 @@ Session_behav_sat$Session_display_rank <- factor(
   labels = c("Alpha", "Beta", "Gamma")
 )
 
-visit_nr_hierarchy <- plot_model(res_session_vis_nr_nb, type = "pred", 
+Figure2A <- plot_model(res_session_vis_nr_nb, type = "pred", 
                                  terms = c("Co.display_total_duration_s_session"), 
                                  colors = "black") +
   geom_point(data = Session_behav_sat, 
@@ -83,7 +75,7 @@ visit_nr_hierarchy <- plot_model(res_session_vis_nr_nb, type = "pred",
        y = "Number of female visits", title = NULL, fill = "") +
   scale_y_continuous(
     trans = pseudo_log_trans(base = 10)) +
-  theme_classic2(base_size = 20) +
+  theme_classic(base_size = 20) +
   theme(
     text = element_text(size = 22),
     axis.title = element_text(size = 22),
@@ -93,7 +85,7 @@ visit_nr_hierarchy <- plot_model(res_session_vis_nr_nb, type = "pred",
   guides(color = guide_legend(override.aes = list(size = 3))) +
   update_geom_defaults("line", list(size = 1.5))
 # save 
-# ggsave("visit_nr_hierarchy.png", visit_nr_hierarchy, width = 7, height = 6, dpi = 600)
+# ggsave("Figure2A.png", Figure2A, width = 7, height = 6, dpi = 600)
 
 
 ### Exploratory hierarchy plots
@@ -144,7 +136,7 @@ summary(visit_dur_lognorm_hurdle_m)
 
 
 # female visit duration colored on session display rank -----------------
-visit_duration_hierarchy <- plot_model(visit_dur_lognorm_hurdle_m, type = "pred", 
+Figure2B <- plot_model(visit_dur_lognorm_hurdle_m, type = "pred", 
                                  terms = c("Co.display_total_duration_s_session"), 
                                  colors = "black") +
   geom_point(data = Session_behav_sat, 
@@ -163,7 +155,7 @@ visit_duration_hierarchy <- plot_model(visit_dur_lognorm_hurdle_m, type = "pred"
   scale_y_continuous(trans = pseudo_log_trans(base = 10, sigma = 100), 
                      breaks = c(0, 200, 1000, 3000),
                      labels = c("0","200", "1000", "3000")) +
-  theme_classic2(base_size = 20) +
+  theme_classic(base_size = 20) +
   theme(
     text = element_text(size = 22),
     axis.title = element_text(size = 22),
@@ -173,7 +165,8 @@ visit_duration_hierarchy <- plot_model(visit_dur_lognorm_hurdle_m, type = "pred"
   guides(color = guide_legend(override.aes = list(size = 3))) +
   update_geom_defaults("line", list(size = 1.5))
 # save 
-# ggsave("visit_dur_hierarchy.png", visit_duration_hierarchy, width = 7, height = 6, dpi = 600)
+# ggsave("Figure2B.png", Figure2B, width = 7, height = 6, dpi = 600)
+
 
 # boxplot 
 ggplot(Session_behav_sat,
@@ -216,14 +209,15 @@ ggplot(Session_behav_sat,
   theme_classic2(base_size = 20) +
   theme(legend.position = "none")
 
-## copulation attempts -----------------
+
+## Figure 2C: copulation attempts -----------------
 # model
 cop_nr_nb_mm <- glmmTMB(Copulation_nr ~  scale(Co.display_total_duration_s_session) +  Total_nr_display + Date2 + Fm_ID + (1|Colour_code), data = Session_behav_sat, 
                         family = nbinom2, zi = ~ 0)
 summary(cop_nr_nb_mm)
 
 ### copulation attempts colored by session display rank -------------------------
-cop_att_hierarchy <- plot_model(cop_nr_nb_mm, type = "pred", 
+Figure2C <- plot_model(cop_nr_nb_mm, type = "pred", 
                                        terms = c("Co.display_total_duration_s_session"), 
                                        colors = "black") +
   geom_point(data = Session_behav_sat, 
@@ -242,7 +236,7 @@ cop_att_hierarchy <- plot_model(cop_nr_nb_mm, type = "pred",
   scale_y_continuous(
     trans = pseudo_log_trans(base = 10)
   ) +
-  theme_classic2(base_size = 20) +
+  theme_classic(base_size = 20) +
   theme(
     text = element_text(size = 22),
     axis.title = element_text(size = 22),
@@ -252,7 +246,8 @@ cop_att_hierarchy <- plot_model(cop_nr_nb_mm, type = "pred",
   guides(color = guide_legend(override.aes = list(size = 3))) +
   update_geom_defaults("line", list(size = 1.5))
 # save 
-# ggsave("cop_att_hierarchy.png", cop_att_hierarchy, width = 7, height = 6, dpi = 600)
+# ggsave("Figure2C.png", Figure2C, width = 7, height = 6, dpi = 600)
+
 
 # boxplot 
 ggplot(Session_behav_sat,
@@ -294,7 +289,8 @@ ggplot(Session_behav_sat,
   theme_classic2(base_size = 20) +
   theme(legend.position = "none")
 
-## successful copulations ----------------
+
+## Figure 2D:  successful copulations ----------------
 # final model 
 res_session_suc_cop_nr_nb_zi <- glmmTMB(Total_successful_copulations ~ scale(Co.display_total_duration_s_session)  +  
                                           Total_nr_display + Date2 + Fm_ID + (1|Colour_code) + (1|Combo_lek), data = Session_behav_sat,  family = nbinom2, zi = ~ Total_nr_display)
@@ -302,7 +298,7 @@ summary(res_session_suc_cop_nr_nb_zi)
 
 
 ### succ copulations colored by session display rank -------------------------
-succ_cop_hierarchy <- plot_model(res_session_suc_cop_nr_nb_zi, type = "pred", 
+Figure2D <- plot_model(res_session_suc_cop_nr_nb_zi, type = "pred", 
                                 terms = c("Co.display_total_duration_s_session"), 
                                 colors = "darkgray") +
   geom_point(data = Session_behav_sat, 
@@ -318,7 +314,7 @@ succ_cop_hierarchy <- plot_model(res_session_suc_cop_nr_nb_zi, type = "pred",
   )) +
   labs(x = "Duration of co-display [s]", 
        y = "Number of successful copulations", title = NULL, fill = "") +
-  theme_classic2(base_size = 20) +
+  theme_classic(base_size = 20) +
   theme(
     text = element_text(size = 22),
     axis.title = element_text(size = 22),
@@ -328,7 +324,7 @@ succ_cop_hierarchy <- plot_model(res_session_suc_cop_nr_nb_zi, type = "pred",
   guides(color = guide_legend(override.aes = list(size = 3))) +
   update_geom_defaults("line", list(size = 1.5))
 # save 
-# ggsave("succ_cop_hierarchy.png", succ_cop_hierarchy, width = 7, height = 6, dpi = 600)
+# ggsave("Figure2D.png", Figure2D, width = 7, height = 6, dpi = 600)
 
 
 
@@ -337,9 +333,10 @@ succ_cop_hierarchy <- plot_model(res_session_suc_cop_nr_nb_zi, type = "pred",
 ### Figure3: Within individual comparison
 
 ## data -----
-Combo_behav_no_state <- read.csv("Residents benefits ms data analysis Kriszti Jelena/Combo_behav_no_state.csv")
 
-Group_period_sum <- read.csv("Residents benefits ms data analysis Kriszti Jelena/Combo copulations summed.csv")
+Group_period_session <-read.csv("Resident cooperation MS Kupan Data/Group_period_session.csv")
+
+Group_period_sum <- read.csv("Resident cooperation MS Kupan Data/Group_period_sums.csv")
 
 
 ## Figure 3A: Female visits numbers ------
@@ -347,7 +344,7 @@ Group_period_sum <- read.csv("Residents benefits ms data analysis Kriszti Jelena
 ## slope figure 
 
 # filter the data to make figures
-filtered_df <- Combo_behav_no_state %>% dplyr::select(Condition, Total_visit_nr_all_females, Combo_lek_week, Colour_code)
+filtered_df <- Group_period_session %>% dplyr::select(Condition, Total_visit_nr_all_females, Combo_lek_week, Colour_code)
 filtered_df$Combo_lek_week_ID <- paste(filtered_df$Combo_lek_week,filtered_df$Colour_code,sep="_")
 
 # reshape the data frame for geom_segment
@@ -444,10 +441,11 @@ Individ_response_cond_visits <-
   geom_point(aes(x = 2, 
                  y = Satellite_Visits), size = 1,
              col = "grey60", shape = 19, fill = "grey60")
+
 # coord_cartesian(ylim = c(0, max(c(reshaped_df$Marginal_Visits, reshaped_df$Satellite_Visits)) + 10))
 # save 
-ggsave("Individ_response_cond_visits.png",Individ_response_cond_visits , width = 8, height = 6, dpi = 300,
-       bg = "transparent")
+# ggsave("Individ_response_cond_visits.png",Individ_response_cond_visits , width = 8, height = 6, dpi = 300, bg = "transparent")
+
 
 ## merge visits and boxplots
 # take the axes as you would for the intercep slope plot and make the boxplots
@@ -514,15 +512,15 @@ p2<-ggplot(subset_datas1, aes(x = Condition, y = Total_visit_nr_all_females, fil
 
 ## combine the boxplots with the intercept slope plot 
 library(cowplot)
-combined_plot_visits <- cowplot::plot_grid(visits_dens_m, Individ_response_cond_visits, visits_dens_s, ncol = 3, rel_widths = c(1, 3, 1))
-ggsave("Combined_violin_slope_plot_visits_zeros_trimmed.png", combined_plot_visits, width = 8, height = 6, dpi = 300, bg = "transparent")
+Figure3A <- cowplot::plot_grid(p1, Individ_response_cond_visits, p2, ncol = 3, rel_widths = c(1, 3, 1))
+# ggsave("Figure3A.png", Figure3A, width = 8, height = 6, dpi = 300, bg = "transparent")
 # from here take it to Inkscape to nicely combine everything
 
 
 ## Figure 3B: Copulation attempts nr -----
 
 # filter the data for the plot
-filtered_df <- Combo_behav_no_state %>% dplyr::select(Condition, Copulation_nr, Combo_lek_week, Colour_code)
+filtered_df <- Group_period_session %>% dplyr::select(Condition, Copulation_nr, Combo_lek_week, Colour_code)
 filtered_df$Combo_lek_week_ID <- paste(filtered_df$Combo_lek_week,filtered_df$Colour_code,sep="_")
 
 # reshape the data frame for geom_segment
@@ -660,7 +658,7 @@ p1.1 <- ggplot(subset_data1, aes(x = Condition, y = Copulation_nr, fill = Condit
 subset_data_s <- Group_period_sum %>%
   filter(Condition == "Satellite", Copulation_nr > 0)
 
-p2<-ggplot(subset_data_s, aes(x = Condition, y = Copulation_nr, fill = Condition)) +
+p2.1<-ggplot(subset_data_s, aes(x = Condition, y = Copulation_nr, fill = Condition)) +
   geom_boxplot(outlier.colour = NULL, outlier.shape = 19,
               outlier.size = 3, notch = FALSE, color = "black",
              width = 0.4,  # Adjust the boxplot width
@@ -687,13 +685,15 @@ p2<-ggplot(subset_data_s, aes(x = Condition, y = Copulation_nr, fill = Condition
 
 ## combine the boxplots with the intercept slope plot 
 library(cowplot)
-combined_plot_cop_att <- cowplot::plot_grid(p1.1, Individ_response_cond, p2, ncol = 3, rel_widths = c(1, 3, 1))
-ggsave("Combined_box_slope_plot_cop_0values.png", combined_plot_cop_att, width = 8, height = 6, dpi = 300, bg = "transparent")
+Figure3B <- cowplot::plot_grid(p1.1, Individ_response_cond, p2.1, ncol = 3, rel_widths = c(1, 3, 1))
+# ggsave("Figure3B.png", Figure3B, width = 8, height = 6, dpi = 300, bg = "transparent")
 # from here take it to inkscape to nicely combine everything
+
+
 
 ##Figure 3C: Successful copulation nr ----
 
-filtered_df2 <- Combo_behav_no_state %>% dplyr::select(Condition, Total_successful_copulations, Combo_lek_week, Colour_code)
+filtered_df2 <- Group_period_session %>% dplyr::select(Condition, Total_successful_copulations, Combo_lek_week, Colour_code)
 filtered_df2$Combo_lek_week_ID <- paste(filtered_df2$Combo_lek_week,filtered_df2$Colour_code,sep="_")
 
 # reshape the data frame for geom_segment
@@ -863,5 +863,5 @@ p2 <-ggplot(subset_data_s, aes(x = Condition, y = Total_successful_copulations, 
                color = "grey70", size = 0.8)
 
 ## combine everything and then work further in Inkscape or Photoshop 
-combined_plot_succ_cop <- cowplot::plot_grid(p1, Individ_response_cond_succ_cop2, p2, ncol = 3, rel_widths = c(1, 3, 1))
-ggsave("Combined_violin_slope_plot_succ_cop_0values.png", combined_plot_succ_cop, width = 8, height = 6, dpi = 300, bg ="transparent")
+Figure3C <- cowplot::plot_grid(p1, Individ_response_cond_succ_cop2, p2, ncol = 3, rel_widths = c(1, 3, 1))
+# ggsave("Figure3C.png", Figure3C, width = 8, height = 6, dpi = 300, bg ="transparent")
